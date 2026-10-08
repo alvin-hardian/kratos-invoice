@@ -1,0 +1,31 @@
+﻿{% extends 'layout.twig' %}
+{% block content %}
+<div class="mb-4 flex items-center gap-3"><h2 class="font-display text-2xl">Quotations</h2><a class="btn btn-primary btn-sm" href="/quotations/new">New</a></div>
+<form class="mb-3 flex flex-wrap gap-2" method="get"><input class="field max-w-xs" name="s" value="{{ q.s ?? '' }}" placeholder="Number / customer / ref"><select class="field max-w-[12rem]" name="status"><option value="">All statuses</option>{% for st in ['draft','issued','accepted','rejected','cancelled'] %}<option {{ q.status==st?'selected' }}>{{ st }}</option>{% endfor %}</select><button class="btn btn-default">Filter</button></form>
+<div id="qgrid" data-url="/api/grid/quotations?s={{ (q.s ?? '')|url_encode }}&status={{ (q.status ?? '')|url_encode }}"></div>
+<table class="tbl w-full text-sm" id="qgrid-fallback"><thead><tr><th class="px-3 py-2">Number</th><th class="px-3 py-2">Customer</th><th class="px-3 py-2">Date</th><th class="px-3 py-2 text-right">Total</th><th class="px-3 py-2">Status</th><th class="px-3 py-2"></th></tr></thead><tbody>
+{% for r in rows %}<tr class="border-t border-slate-100"><td class="px-3 py-2"><a class="text-brand-600 hover:underline" href="/quotations/{{ r.id }}">{{ r.number ?? '(draft)' }}</a>{% if r.status=='issued' and r.expiry_date and r.expiry_date < 'now'|date('Y-m-d') %} <span class="inline-block rounded bg-red-600 px-2 py-0.5 text-xs font-medium text-white">expired</span>{% endif %}</td><td class="px-3 py-2">{{ r.customer_name }}</td><td class="px-3 py-2">{{ r.doc_date|d }}</td><td class="px-3 py-2 text-right">{{ r.total|idr }}</td><td class="px-3 py-2"><span class="inline-block rounded px-2 py-0.5 text-xs font-medium text-white badge-{{ r.status }}">{{ r.status }}</span></td><td class="px-3 py-2"><a class="btn btn-default btn-sm" href="/quotations/{{ r.id }}">Open</a></td></tr>{% else %}<tr><td colspan="6" class="px-3 py-4 text-center text-slate-400">No quotations.</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="{{ asset('vendor/gridjs/mermaid.min.css') }}">
+<link rel="stylesheet" href="{{ asset('css/grid-uikit.css') }}">
+<script src="{{ asset('vendor/gridjs/gridjs.umd.js') }}"></script>
+<script src="{{ asset('js/grids.js') }}"></script>
+<script>
+mountGrid('qgrid', {
+  columns: [
+    { id: 'number', name: 'Number', formatter: function(c, row) {
+      var extra = row.cells[6].data ? ' ' + badgeHtml('expired', 'badge-overdue') : '';
+      return gridjs.html('<a class="text-brand-600 hover:underline" href="/quotations/' + row.cells[5].data + '">' + escapeHtml(c) + '</a>' + extra);
+    }},
+    { id: 'customer', name: 'Customer' },
+    { id: 'date_iso', name: 'Date', formatter: function(c) { return fmtDateIso(c); } },
+    { id: 'total_num', name: 'Total', formatter: function(c) { return gridjs.html('<span class="num">' + fmtMoney(c) + '</span>'); } },
+    { id: 'status', name: 'Status', formatter: function(c) { return statusBadge(c); } },
+    { id: 'id', name: '', sort: false, formatter: function(c) { return gridjs.html('<a class="btn btn-default btn-sm" href="/quotations/' + c + '">Open</a>'); } },
+    { id: 'expired', hidden: true }
+  ]
+});
+</script>
+{% endblock %}

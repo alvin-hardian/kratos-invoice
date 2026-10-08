@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+@font-face { font-family: 'Inter'; src: url('{{ font_dir }}/Inter-Regular.ttf'); font-weight: normal; }
+@font-face { font-family: 'Inter'; src: url('{{ font_dir }}/Inter-Medium.ttf'); font-weight: bold; }
+@font-face { font-family: 'Oswald'; src: url('{{ font_dir }}/Oswald-Medium.ttf'); }
+body { font-family: 'Inter', sans-serif; font-size: 11px; color: #111; }
+h1, h2, h3 { font-family: 'Oswald', sans-serif; font-weight: 500; margin: 0 0 6px 0; }
+.header { border-bottom: 3px solid #1e40af; padding-bottom: 8px; margin-bottom: 12px; }
+table { width: 100%; border-collapse: collapse; }
+th { background: #eef2ff; text-align: left; }
+th, td { border: 1px solid #ccc; padding: 5px 6px; vertical-align: top; }
+thead { display: table-header-group; }
+tr { page-break-inside: avoid; }
+.totals td { border: none; border-bottom: 1px solid #ddd; }
+.right { text-align: right; }
+.draft { color: #b91c1c; border: 2px solid #b91c1c; display: inline-block; padding: 2px 10px; font-size: 16px; margin-bottom: 8px; }
+.meta { color: #444; }
+.sec { background: #eef2ff; font-weight: bold; }
+</style></head><body>
+<div class="header">
+<h1>{{ settings.company_name }}</h1>
+<div class="meta">{{ settings.address }}<br>{{ settings.email }} · {{ settings.phone }}{% if settings.tax_id %} · NPWP: {{ settings.tax_id }}{% endif %}</div>
+<h2 style="margin-top:8px">{{ kind == 'quote' ? 'QUOTATION' : 'INVOICE' }} {{ d.number ? '#' ~ d.number : '(DRAFT — no permanent number)' }}</h2>
+{% if not d.number %}<div class="draft">DRAFT</div>{% endif %}
+</div>
+<table style="border:none;margin-bottom:10px"><tr>
+<td style="border:none"><b>Bill to:</b><br>{{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).name : '') }}<br><span class="meta">{{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).billing_address : '') }}<br>{{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).email : '') }} {{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).phone : '') }}</span></td>
+<td style="border:none" class="right">Date: {{ d.doc_date }}<br>{% if kind=='quote' %}Valid until: {{ d.expiry_date }}{% else %}Due: {{ d.due_date }}{% endif %}<br>Ref: {{ d.reference ?? '-' }}</td>
+</tr></table>
+<table><thead><tr><th>No</th><th>Description</th><th>Qty</th><th>Unit price</th><th class="right">Amount</th></tr></thead><tbody>
+{% set no = 0 %}
+{% for sec in d.sections %}
+<tr><td colspan="5" class="sec">{{ sec.title }}{% if sec.description %} — {{ sec.description }}{% endif %}</td></tr>
+{% for l in sec.lines %}{% set no = no + 1 %}
+<tr><td>{{ no }}</td><td>{{ l.description }}{% if l.waived %}<br><b>{{ l.price_mode|upper }}</b>{% elseif l.mult_enabled %}<br><span class="meta">{{ l.quantity }} {{ l.unit_label }} × {{ l.mult_value }} {{ l.mult_label }} × {{ l.unit_price|idr }}</span>{% else %}<br><span class="meta">{{ l.quantity }} {{ l.unit_label }} × {{ l.unit_price|idr }}</span>{% endif %}</td><td>{{ l.waived ? l.price_mode|capitalize : l.quantity ~ ' ' ~ l.unit_label }}</td><td>{{ l.waived ? '—' : l.unit_price|idr }}</td><td class="right">{{ l.line_amount|idr }}</td></tr>
+{% endfor %}
+{% endfor %}
+</tbody></table>
+<table class="totals" style="margin-top:10px"><tr><td>Subtotal</td><td class="right">{{ d.subtotal|idr }}</td></tr>
+<tr><td>Discount</td><td class="right">− {{ d.discount_amount|idr }}</td></tr>
+{% for t in d.tax_breakdown|json_decode %}<tr><td>Tax {{ t.rate }}%</td><td class="right">{{ t.tax|idr }}</td></tr>{% endfor %}
+<tr><td><b>Total</b></td><td class="right"><b>{{ d.total|idr }}</b></td></tr>
+<tr><td>Requested down payment{% if d.dp_due_date %} (due {{ d.dp_due_date }}){% endif %}</td><td class="right">{{ d.dp_amount|idr }}</td></tr>
+<tr><td>Remaining after requested DP</td><td class="right">{{ (d.total - d.dp_amount)|idr }}</td></tr>
+{% if kind == 'invoice' %}<tr><td>Down payments received</td><td class="right">{{ d.dp_paid|idr }}</td></tr><tr><td>Total payments received</td><td class="right">{{ d.paid|idr }}</td></tr><tr><td><b>Outstanding balance</b></td><td class="right"><b>{{ d.balance|idr }}</b></td></tr>{% endif %}
+</table>
+{% if d.banks|length %}<h3>Payment instructions</h3>{% for b in d.banks %}{% set s = b.snapshot|json_decode %}<p>{{ s.bank_name }}<br>Account: {{ s.account_number }} ({{ s.holder }}){% if s.branch %}<br>{{ s.branch }}{% endif %}{% if s.note %}<br>{{ s.note }}{% endif %}</p>{% endfor %}{% endif %}
+{% if d.notes %}<h3>Notes</h3><p>{{ d.notes }}</p>{% endif %}
+{% if d.terms %}<h3>Terms</h3><p>{{ d.terms }}</p>{% endif %}
+<p class="meta">Commercial {{ kind == 'quote' ? 'quotation' : 'invoice' }} — not a government tax invoice.</p>
+</body></html>

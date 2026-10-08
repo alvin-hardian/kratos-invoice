@@ -1,0 +1,41 @@
+﻿{% extends 'layout.twig' %}
+{% block content %}
+<h2 class="font-display mb-4 text-2xl">{{ kind == 'quote' ? 'Quotation' : 'Invoice' }} {{ doc.number ? '#' ~ doc.number : '(draft)' }} {% if doc %}<span class="inline-block rounded px-2 py-0.5 text-xs font-medium text-white badge-{{ doc.status }}">{{ doc.status }}</span>{% endif %}</h2>
+<form method="post" action="{{ kind == 'quote' ? (doc ? '/quotations/' ~ doc.id : '/quotations') : (doc ? '/invoices/' ~ doc.id : '/invoices') }}" id="doc-form">{{ csrf() }}
+<div class="grid grid-cols-1 gap-3 md:grid-cols-12">
+<div class="md:col-span-4"><label class="text-sm font-medium">Customer *<div class="mt-1 flex gap-2"><select class="field" name="customer_id" id="f-customer" required><option value="">— choose —</option>{% for c in customers %}<option value="{{ c.id }}" {{ doc and doc.customer_id==c.id?'selected' }}>{{ c.name }}</option>{% endfor %}</select><button type="button" class="btn btn-default shrink-0" data-modal-open="cust-modal">+</button></div></label></div>
+<div class="md:col-span-2"><label class="text-sm font-medium">Date *<input class="field mt-1" type="date" name="doc_date" id="f-date" value="{{ doc.doc_date ?? 'now'|date('Y-m-d') }}" required></label></div>
+<div class="md:col-span-2"><label class="text-sm font-medium">{{ kind=='quote' ? 'Expiry' : 'Due' }}<input class="field mt-1" type="date" name="{{ kind=='quote' ? 'expiry_date' : 'due_date' }}" value="{{ kind=='quote' ? (doc.expiry_date ?? expDef) : (doc.due_date ?? dueDef) }}"></label></div>
+<div class="md:col-span-4"><label class="text-sm font-medium">Reference / project<input class="field mt-1" name="reference" value="{{ doc.reference ?? '' }}" placeholder="Optional"></label></div>
+</div>
+<div id="sections" class="mt-4"></div>
+<button type="button" class="btn btn-default mt-2" id="add-section">+ Add section</button>
+<hr class="my-4 border-slate-200">
+<div class="grid grid-cols-1 gap-3 md:grid-cols-4">
+<div><label class="text-sm font-medium">Discount<select class="field mt-1" name="discount_type" id="f-dt"><option value="none">None</option><option value="percent" {{ doc and doc.discount_type=='percent'?'selected' }}>Percent %</option><option value="fixed" {{ doc and doc.discount_type=='fixed'?'selected' }}>Fixed IDR</option></select></label><input class="field mt-2" name="discount_value" id="f-dv" value="{{ doc.discount_value ?? 0 }}"></div>
+<div><label class="text-sm font-medium">Down payment<select class="field mt-1" name="dp_type" id="f-pt"><option value="none">None</option><option value="percent" {{ doc and doc.dp_type=='percent'?'selected' }}>Percent %</option><option value="fixed" {{ doc and doc.dp_type=='fixed'?'selected' }}>Fixed IDR</option></select></label><input class="field mt-2" name="dp_value" id="f-pv" value="{{ doc.dp_value ?? 0 }}"></div>
+<div><label class="text-sm font-medium">DP due date<input class="field mt-1" type="date" name="dp_due_date" value="{{ doc.dp_due_date ?? '' }}"></label></div>
+<div><span class="text-sm font-medium">Banks (multi)</span><div id="bank-list" class="mt-1 flex flex-col gap-1 text-sm">{% for b in banks %}<label class="flex items-center gap-2"><input type="checkbox" class="bank-cb h-4 w-4 accent-brand-600" name="bank_ids[]" value="{{ b.id }}" {{ b.id in selBanks ? 'checked' }}> {{ b.bank_name }} · {{ b.account_number }}</label>{% endfor %}</div><div class="mt-1 text-xs text-slate-500" id="bank-preview"></div></div>
+<div class="md:col-span-2"><label class="text-sm font-medium">Notes<textarea class="field mt-1" name="notes">{{ doc.notes ?? settings.default_notes }}</textarea></label></div>
+<div class="md:col-span-2"><label class="text-sm font-medium">Terms<textarea class="field mt-1" name="terms">{{ doc.terms ?? settings.default_terms }}</textarea></label></div>
+</div>
+<div class="card mt-4 p-4"><h3 class="font-display mb-2 text-lg">Totals (live)</h3><div id="totals" class="text-sm"></div></div>
+<div class="mt-4 flex gap-2"><button class="btn btn-primary">Save draft</button>
+{% if doc and kind=='quote' %}<a class="btn btn-default" href="/quotations/{{ doc.id }}">Back</a>{% endif %}
+{% if doc and kind=='invoice' %}<a class="btn btn-default" href="/invoices/{{ doc.id }}">Back</a>{% endif %}</div>
+</form>
+<div id="cust-modal" class="fixed inset-0 z-50 hidden items-center justify-center"><div class="absolute inset-0 bg-slate-900/60" data-modal-close></div><div class="card relative w-full max-w-md p-5"><h3 class="font-display mb-3 text-lg">New customer</h3><div class="flex flex-col gap-2"><input class="field" id="nc-name" placeholder="Name *"><input class="field" id="nc-email" placeholder="Email"><input class="field" id="nc-phone" placeholder="Phone"><textarea class="field" id="nc-addr" placeholder="Billing address"></textarea><div class="flex justify-end gap-2"><button class="btn btn-default" data-modal-close>Cancel</button><button class="btn btn-primary" id="nc-save">Save</button></div></div></div></div>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="{{ asset('vendor/tom-select/tom-select.css') }}">
+<script src="{{ asset('vendor/tom-select/tom-select.complete.min.js') }}"></script>
+<script>
+window.EDITOR = {
+  kind: '{{ kind }}',
+  taxes: {{ taxes|json_encode|raw }},
+  products: {{ products|json_encode|raw }},
+  sections: {% if doc %}{{ doc.sections|json_encode|raw }}{% else %}[{title:'Section 1',description:'',lines:[{description:'',quantity:1,unit_label:'pcs',unit_price:0,mult_enabled:0,mult_label:'days',mult_value:1,tax_rate_id:'',tax_rate:0,waived:0,price_mode:'normal'}]}]{% endif %}
+};
+</script>
+<script src="{{ asset('js/editor.js') }}"></script>
+{% endblock %}

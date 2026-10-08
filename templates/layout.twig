@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title|default('Kratos Invoice') }}</title>
+<link rel="stylesheet" href="{{ asset('css/tailwind.css') }}">
+<link rel="stylesheet" href="{{ asset('css/app.css') }}">
+</head>
+<body class="min-h-screen">
+{% if sess.uid %}
+<div class="flex min-h-screen">
+  <!-- Sidebar (desktop: full ↔ collapsed; hidden on mobile) -->
+  <aside id="sidebar" class="hidden w-60 shrink-0 flex-col bg-slate-900 text-slate-200 transition-all duration-150 md:flex">
+    <a href="/" class="font-display flex items-center gap-2 px-5 pb-5 pt-6 text-xl tracking-wide text-white">
+      <svg class="h-6 w-6 shrink-0 text-brand-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H4z"/><path d="M4 16l4-4 4 4 4-6 4 6"/></svg>
+      <span class="nav-label">Kratos <span class="text-brand-100">Invoice</span></span>
+    </a>
+    <nav class="flex flex-col gap-1 px-3 text-sm">
+      <a href="/" title="Dashboard" class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-800 hover:text-white"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span class="nav-label">Dashboard</span></a>
+      <a href="/quotations" title="Quotations" class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-800 hover:text-white"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6"/></svg><span class="nav-label">Quotations</span></a>
+      <a href="/invoices" title="Invoices" class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-800 hover:text-white"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M9 13h8M9 17h8"/></svg><span class="nav-label">Invoices</span></a>
+      <a href="/customers" title="Customers" class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-800 hover:text-white"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5 6.5-5s5.7 1.5 6.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 15c2.8.3 4.7 1.7 5.5 4.5"/></svg><span class="nav-label">Customers</span></a>
+      <a href="/products" title="Products" class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-800 hover:text-white"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg><span class="nav-label">Products</span></a>
+      <a href="/summary" title="Summary" class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-800 hover:text-white"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span class="nav-label">Summary</span></a>
+      <a href="/settings" title="Settings" class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-800 hover:text-white"><svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg><span class="nav-label">Settings</span></a>
+    </nav>
+    <div class="mt-auto border-t border-slate-800 p-4 text-xs text-slate-400"><span class="nav-label">{{ sess.uname }}</span></div>
+  </aside>
+  <!-- Mobile drawer -->
+  <div id="drawer" class="fixed inset-0 z-40 hidden">
+    <div class="absolute inset-0 bg-slate-900/60" data-drawer-close></div>
+    <aside class="absolute left-0 top-0 flex h-full w-64 flex-col bg-slate-900 text-slate-200">
+      <a href="/" class="font-display px-5 pb-5 pt-6 text-xl text-white">Kratos <span class="text-brand-100">Invoice</span></a>
+      <nav class="flex flex-col gap-1 px-3 text-sm">
+        <a href="/" class="rounded-lg px-3 py-2 hover:bg-slate-800">Dashboard</a>
+        <a href="/quotations" class="rounded-lg px-3 py-2 hover:bg-slate-800">Quotations</a>
+        <a href="/invoices" class="rounded-lg px-3 py-2 hover:bg-slate-800">Invoices</a>
+        <a href="/customers" class="rounded-lg px-3 py-2 hover:bg-slate-800">Customers</a>
+        <a href="/products" class="rounded-lg px-3 py-2 hover:bg-slate-800">Products</a>
+        <a href="/summary" class="rounded-lg px-3 py-2 hover:bg-slate-800">Summary</a>
+        <a href="/settings" class="rounded-lg px-3 py-2 hover:bg-slate-800">Settings</a>
+      </nav>
+    </aside>
+  </div>
+  <div class="min-w-0 flex-1">
+    <!-- Topbar -->
+    <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
+      <button class="btn btn-default btn-sm" data-nav-toggle aria-label="Toggle menu">☰</button>
+      <span class="font-display text-lg md:hidden">Kratos Invoice</span>
+      <div class="ml-auto flex items-center gap-3 text-sm">
+        <span class="hidden text-slate-500 sm:inline">{{ sess.uname }}</span>
+        <form method="post" action="/logout" class="inline">{{ csrf() }}<button class="btn btn-default btn-sm">Logout</button></form>
+      </div>
+    </header>
+    <main class="mx-auto w-full max-w-6xl p-4 md:p-6">
+{% else %}
+<main class="mx-auto w-full max-w-md p-4 md:p-6">
+{% endif %}
+      {% for f in flash %}<div class="mb-3 rounded-lg border px-4 py-2.5 text-sm {{ f.type == 'danger' ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700' }}">{{ f.msg }}</div>{% endfor %}
+      {% block content %}{% endblock %}
+{% if sess.uid %}
+    </main>
+  </div>
+</div>
+{% else %}
+</main>
+{% endif %}
+<!-- Toast + modal mounts -->
+<div id="toasts" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+<div id="modal-root"></div>
+<script src="{{ asset('js/ui.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

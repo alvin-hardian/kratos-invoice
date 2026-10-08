@@ -1,0 +1,5 @@
+{"searchCustomers": {"pageInfo": {"currentPage": 1, "pageCount": 1}, "items": [
+  {"companyName": "Acme Corp", "firstName": null, "lastName": null, "email": "billing@acme.com", "mobile": "021-5550101", "phone": "", "businessNumber": "", "address": {"address1": "Jl. Sudirman No. 10", "city": "Jakarta"}},
+  {"companyName": "Stark Ind.", "firstName": null, "lastName": null, "email": "pay@stark.example", "mobile": "", "phone": "", "businessNumber": "", "address": {"address1": "", "city": ""}},
+  {"companyName": "Acme Corp", "email": "billing@acme.com", "mobile": "", "address": {}}
+]}}

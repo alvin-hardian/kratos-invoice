@@ -1,0 +1,46 @@
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Regular.ttf') format('truetype');
+  font-weight: 400 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Medium.ttf') format('truetype');
+  font-weight: 600 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Oswald';
+  src: url('/fonts/Oswald-Medium.ttf') format('truetype');
+  font-weight: 500 600;
+  font-display: swap;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Oswald', 'Inter', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Tom Select theme alignment */
+.ts-wrapper .ts-control {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background: #fff;
+}
+.ts-wrapper.focus .ts-control {
+  outline: 2px solid #2456d6;
+  outline-offset: 0;
+  border-color: #2456d6;
+}
+.ts-dropdown {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+.ts-dropdown .option { padding: 0.5rem 0.75rem; }
+.ts-dropdown .option.active { background: #eef4ff; }
+.ts-dropdown .opt-price { float: right; color: #2456d6; font-weight: 600; }

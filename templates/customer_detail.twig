@@ -1,0 +1,8 @@
+{% extends 'layout.twig' %}
+{% block content %}
+<h2 class="font-display mb-1 text-2xl">{{ c.name }}</h2>
+<p class="mb-4 text-sm text-slate-500">{{ c.contact_person }} · {{ c.email }} · {{ c.phone }}<br>{{ c.billing_address }}<br>Tax ID: {{ c.tax_id ?? '-' }}</p>
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+<div class="card p-4"><h3 class="font-display mb-2 text-lg">Quotations</h3><table class="tbl w-full text-sm">{% for r in quotes %}<tr class="border-t border-slate-100"><td class="py-1.5"><a class="text-brand-600 hover:underline" href="/quotations/{{ r.id }}">{{ r.number ?? '(draft)' }}</a></td><td class="py-1.5">{{ r.status }}</td><td class="py-1.5 text-right">{{ r.total|idr }}</td></tr>{% else %}<tr><td class="py-1.5 text-slate-400">None</td></tr>{% endfor %}</table></div>
+<div class="card p-4"><h3 class="font-display mb-2 text-lg">Invoices</h3><table class="tbl w-full text-sm">{% for r in invoices %}<tr class="border-t border-slate-100"><td class="py-1.5"><a class="text-brand-600 hover:underline" href="/invoices/{{ r.id }}">{{ r.number ?? '(draft)' }}</a></td><td class="py-1.5">{{ r.status }}</td><td class="py-1.5 text-right">{{ r.total|idr }}</td></tr>{% else %}<tr><td class="py-1.5 text-slate-400">None</td></tr>{% endfor %}</table></div></div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends 'layout.twig' %}
+{% block content %}
+<h2 class="font-display mb-4 text-2xl">Dashboard</h2>
+<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+<div class="card p-4"><div class="text-sm text-slate-500">Outstanding</div><div class="font-display text-2xl">{{ out|idr }}</div><a class="text-sm text-brand-600 hover:underline" href="/invoices">View invoices</a></div>
+<div class="card p-4"><div class="text-sm text-slate-500">Overdue</div><div class="font-display text-2xl text-red-600">{{ over|idr }}</div><a class="text-sm text-brand-600 hover:underline" href="/invoices">Overdue list</a></div>
+<div class="card p-4"><div class="text-sm text-slate-500">Paid this month</div><div class="font-display text-2xl text-emerald-600">{{ month|idr }}</div><a class="text-sm text-brand-600 hover:underline" href="/summary">Summary</a></div>
+<div class="card p-4"><div class="text-sm text-slate-500">Awaiting decision</div><div class="font-display text-2xl">{{ await }}</div><a class="text-sm text-brand-600 hover:underline" href="/quotations?status=issued">View quotations</a></div>
+<div class="card p-4"><div class="text-sm text-slate-500">DP still due</div><div class="font-display text-2xl">{{ dpdue|idr }}</div><a class="text-sm text-brand-600 hover:underline" href="/summary">Summary</a></div>
+</div>
+<div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+<div class="card p-4"><h3 class="font-display mb-2 text-lg">Recent quotations</h3><table class="tbl w-full text-sm"><tbody>{% for r in recent_q %}<tr class="border-t border-slate-100"><td class="py-1.5"><a class="text-brand-600 hover:underline" href="/quotations/{{ r.id }}">{{ r.number ?? '(draft)' }}</a></td><td class="py-1.5">{{ r.customer_name }}</td><td class="py-1.5 text-right">{{ r.total|idr }}</td></tr>{% else %}<tr><td class="py-1.5 text-slate-400">No data</td></tr>{% endfor %}</tbody></table></div>
+<div class="card p-4"><h3 class="font-display mb-2 text-lg">Recent invoices</h3><table class="tbl w-full text-sm"><tbody>{% for r in recent_i %}<tr class="border-t border-slate-100"><td class="py-1.5"><a class="text-brand-600 hover:underline" href="/invoices/{{ r.id }}">{{ r.number ?? '(draft)' }}</a></td><td class="py-1.5">{{ r.customer_name }}</td><td class="py-1.5 text-right">{{ r.total|idr }}</td></tr>{% else %}<tr><td class="py-1.5 text-slate-400">No data</td></tr>{% endfor %}</tbody></table></div>
+</div>
+{% endblock %}

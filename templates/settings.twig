@@ -1,0 +1,44 @@
+{% extends 'layout.twig' %}
+{% block content %}
+<h2 class="font-display mb-4 text-2xl">Settings</h2>
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+<div class="lg:col-span-2"><div class="card p-5"><h3 class="font-display mb-3 text-lg">Company</h3>
+<form method="post" action="/settings" enctype="multipart/form-data" class="grid grid-cols-1 gap-3 md:grid-cols-2">{{ csrf() }}
+<label class="text-sm font-medium">Name<input class="field mt-1" name="company_name" value="{{ s.company_name }}"></label>
+<label class="text-sm font-medium">Tax ID<input class="field mt-1" name="tax_id" value="{{ s.tax_id }}"></label>
+<label class="text-sm font-medium md:col-span-2">Address<textarea class="field mt-1" name="address">{{ s.address }}</textarea></label>
+<label class="text-sm font-medium">Email<input class="field mt-1" name="email" value="{{ s.email }}"></label>
+<label class="text-sm font-medium">Phone<input class="field mt-1" name="phone" value="{{ s.phone }}"></label>
+<label class="text-sm font-medium">Quote valid (days)<input class="field mt-1" type="number" name="quote_validity_days" value="{{ s.quote_validity_days }}"></label>
+<label class="text-sm font-medium">Invoice terms (days)<input class="field mt-1" type="number" name="invoice_payment_days" value="{{ s.invoice_payment_days }}"></label>
+<label class="text-sm font-medium">QT prefix<input class="field mt-1" name="quote_prefix" value="{{ s.quote_prefix }}"></label>
+<label class="text-sm font-medium">INV prefix<input class="field mt-1" name="invoice_prefix" value="{{ s.invoice_prefix }}"></label>
+<label class="text-sm font-medium md:col-span-2">Default notes<textarea class="field mt-1" name="default_notes">{{ s.default_notes }}</textarea></label>
+<label class="text-sm font-medium md:col-span-2">Default terms<textarea class="field mt-1" name="default_terms">{{ s.default_terms }}</textarea></label>
+<div class="text-sm font-medium md:col-span-2"><label>Logo (PNG/JPG/WebP, 2MB)<input class="field mt-1" type="file" name="logo" accept="image/*"></label>{% if s.logo_path %}<p class="mt-1 text-xs text-slate-500">Current: {{ s.logo_path }}</p>{% endif %}</div>
+<div class="md:col-span-2"><button class="btn btn-primary">Save settings</button></div>
+</form></div></div>
+<div class="flex flex-col gap-4">
+<div class="card p-5"><h3 class="font-display mb-3 text-lg">Bank accounts</h3>
+{% for b in banks %}<div class="mb-2 rounded-lg border border-slate-200 p-3 text-sm"><b>{{ b.bank_name }}</b> {{ b.active ? '' : '(archived)' }}<br>{{ b.account_number }} · {{ b.holder }}{% if b.branch %}<br>{{ b.branch }}{% endif %}<br><button class="btn btn-default btn-sm mt-2" onclick='editB({{ b|json_encode }})'>Edit</button></div>{% else %}<p class="text-sm text-slate-400">No bank accounts.</p>{% endfor %}
+<h4 class="mt-3 text-sm font-semibold">New / edit</h4>
+<form method="post" action="/banks" class="mt-2 flex flex-col gap-2">{{ csrf() }}<input type="hidden" name="id" id="b-id">
+<input class="field" name="bank_name" id="b-name" placeholder="Bank name *" required>
+<input class="field" name="account_number" id="b-no" placeholder="Account number *" required>
+<input class="field" name="holder" id="b-holder" placeholder="Account holder *" required>
+<input class="field" name="branch" id="b-branch" placeholder="Branch (optional)">
+<input class="field" name="note" id="b-note" placeholder="Payment note (optional)">
+<label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_default_doc" id="b-def" class="h-4 w-4 accent-brand-600"> Default in documents</label>
+<label class="flex items-center gap-2 text-sm">Active <select class="field max-w-[8rem]" name="active" id="b-act"><option value="1">Active</option><option value="0">Archived</option></select></label>
+<button class="btn btn-primary self-start">Save bank</button></form></div>
+<div class="card p-5"><h3 class="font-display mb-3 text-lg">Tax rates</h3>
+{% for t in taxes %}<div class="text-sm">{{ t.code }} — {{ t.label }} @ {{ t.rate }}% {{ t.active ? '' : '(inactive)' }}</div>{% endfor %}
+<form method="post" action="/taxes" class="mt-3 flex flex-col gap-2">{{ csrf() }}<input type="hidden" name="id" id="t-id">
+<input class="field" name="code" id="t-code" placeholder="Code e.g. PPN-12">
+<input class="field" name="label" id="t-label" placeholder="Label">
+<input class="field" name="rate" id="t-rate" placeholder="Rate %">
+<label class="flex items-center gap-2 text-sm"><input type="checkbox" name="active" checked class="h-4 w-4 accent-brand-600"> Active</label>
+<button class="btn btn-primary self-start">Save tax</button></form></div>
+</div></div>
+{% endblock %}
+{% block scripts %}<script>function editB(b){document.getElementById('b-id').value=b.id;document.getElementById('b-name').value=b.bank_name||'';document.getElementById('b-no').value=b.account_number||'';document.getElementById('b-holder').value=b.holder||'';document.getElementById('b-branch').value=b.branch||'';document.getElementById('b-note').value=b.note||'';document.getElementById('b-def').checked=!!+b.is_default_doc;document.getElementById('b-act').value=b.active;}</script>{% endblock %}

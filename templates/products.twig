@@ -1,0 +1,51 @@
+﻿{% extends 'layout.twig' %}
+{% block content %}
+<div class="mb-4 flex items-center gap-3"><h2 class="font-display text-2xl">Products / Services</h2><a class="btn btn-default btn-sm" href="#pform">New item</a></div>
+<form class="mb-3 flex flex-wrap gap-2" method="get"><input class="field max-w-xs" name="s" value="{{ q.s ?? '' }}" placeholder="Search"><button class="btn btn-default">Search</button></form>
+<div id="pgrid" data-url="/api/grid/products?s={{ (q.s ?? '')|url_encode }}"></div>
+<table class="tbl w-full text-sm" id="pgrid-fallback"><thead><tr><th class="px-3 py-2">Name</th><th class="px-3 py-2">Unit</th><th class="px-3 py-2 text-right">Price</th><th class="px-3 py-2">Mult</th><th class="px-3 py-2">Tax</th><th class="px-3 py-2">Status</th><th class="px-3 py-2"></th></tr></thead><tbody>
+{% for r in rows %}<tr class="border-t border-slate-100"><td class="px-3 py-2">{{ r.name }}</td><td class="px-3 py-2">{{ r.unit_label }}</td><td class="px-3 py-2 text-right">{{ r.unit_price|idr }}</td><td class="px-3 py-2">{% if r.mult_enabled_default %}{{ r.mult_value }} {{ r.mult_label }}{% else %}-{% endif %}</td><td class="px-3 py-2">{{ r.tax_code ?? '-' }}</td><td class="px-3 py-2">{{ r.active ? 'Active' : 'Archived' }}</td><td class="px-3 py-2 whitespace-nowrap"><button class="btn btn-default btn-sm" onclick='editP({{ r|json_encode }})'>Edit</button> <form style="display:inline" method="post" action="/products/{{ r.id }}/archive">{{ csrf() }}<button class="btn btn-danger btn-sm">Toggle</button></form></td></tr>{% else %}<tr><td colspan="7" class="px-3 py-4 text-center text-slate-400">No items.</td></tr>{% endfor %}
+</tbody></table>
+<h3 class="font-display mb-3 mt-6 text-lg" id="pform">New / edit item</h3>
+<form method="post" action="/products" class="grid grid-cols-1 gap-3 md:grid-cols-4">{{ csrf() }}
+<input type="hidden" name="id" id="p-id"><input type="hidden" name="active" value="1">
+<input class="field md:col-span-2" name="name" id="p-name" placeholder="Name *" required>
+<input class="field" name="unit_label" id="p-unit" placeholder="Unit (pcs, lot...)" list="units"><datalist id="units"><option>pcs</option><option>unit</option><option>person</option><option>package</option><option>lot</option></datalist>
+<input class="field" name="unit_price" id="p-price" placeholder="Unit price IDR">
+<textarea class="field md:col-span-4" name="description" id="p-desc" placeholder="Description"></textarea>
+<select class="field" name="tax_rate_id" id="p-tax"><option value="">No tax</option>{% for t in taxes %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}</select>
+<div><label class="flex items-center gap-2 text-sm"><input type="checkbox" name="mult_enabled_default" id="p-me" checked class="h-4 w-4 accent-brand-600"> Multiplier default</label></div>
+<input class="field" name="mult_label" id="p-ml" placeholder="days/hours/..." list="mlist"><datalist id="mlist"><option>days</option><option>hours</option><option>sessions</option><option>trips</option></datalist>
+<input class="field" name="mult_value" id="p-mv" placeholder="Default mult value" value="1">
+<div><button class="btn btn-primary">Save</button></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="{{ asset('vendor/gridjs/mermaid.min.css') }}">
+<link rel="stylesheet" href="{{ asset('css/grid-uikit.css') }}">
+<script src="{{ asset('vendor/gridjs/gridjs.umd.js') }}"></script>
+<script src="{{ asset('js/grids.js') }}"></script>
+<script>
+function editP(r){document.getElementById('p-id').value=r.id;document.getElementById('p-name').value=r.name||'';document.getElementById('p-unit').value=r.unit_label||'';document.getElementById('p-price').value=r.unit_price||'';document.getElementById('p-desc').value=r.description||'';document.getElementById('p-tax').value=r.tax_rate_id||'';document.getElementById('p-me').checked=!!+r.mult_enabled_default;document.getElementById('p-ml').value=r.mult_label||'';document.getElementById('p-mv').value=r.mult_value||'';window.location.hash='pform';}
+var CSRF = '{{ sess.csrf }}';
+mountGrid('pgrid', {
+  columns: [
+    { id: 'name', name: 'Name', formatter: function(c) { return escapeHtml(c); } },
+    { id: 'unit', name: 'Unit' },
+    { id: 'price_num', name: 'Price', formatter: function(c) { return gridjs.html('<span class="num">' + fmtMoney(c) + '</span>'); } },
+    { id: 'mult', name: 'Mult' },
+    { id: 'tax', name: 'Tax' },
+    { id: 'status', name: 'Status' },
+    { id: 'id', name: '', sort: false, formatter: function(c) {
+      return gridjs.html('<button class="btn btn-default btn-sm" data-edit-prod="' + c + '">Edit</button> ' +
+        '<form style="display:inline" method="post" action="/products/' + c + '/archive"><input type="hidden" name="csrf" value="' + CSRF + '"><button class="btn btn-danger btn-sm" onclick="return confirm(\'Toggle status?\')">Toggle</button></form>');
+    }}
+  ]
+});
+document.getElementById('pgrid').addEventListener('click', function(ev) {
+  var b = ev.target.closest('[data-edit-prod]');
+  if (!b) return;
+  fetch('/api/grid/products/' + b.getAttribute('data-edit-prod')).then(function(r) { return r.json(); }).then(editP);
+});
+</script>
+{% endblock %}

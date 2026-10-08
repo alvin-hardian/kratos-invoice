@@ -1,0 +1,13 @@
+/* Grid.js alignment with the Tailwind business theme (loaded after mermaid theme). */
+.gridjs-wrapper { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; }
+.gridjs-container { color: #0f172a; }
+.gridjs-th { font-family: 'Oswald', 'Inter', sans-serif; font-weight: 500; color: #1e3a8a; background: #eef4ff !important; }
+.gridjs-td { background: #fff; }
+.gridjs-tr:nth-child(even) .gridjs-td { background: #f8fafc; }
+.gridjs-search { margin-bottom: 10px; }
+.gridjs-search-input { border-radius: 0.5rem; border: 1px solid #cbd5e1; padding: 0.5rem 0.75rem; width: 280px; max-width: 100%; }
+.gridjs-pagination { background: #fff; }
+.gridjs-pages button { border-radius: 0.5rem; }
+.gridjs-pages button.gridjs-currentPage { background: #1e40af; color: #fff; border-color: #1e40af; }
+.gridjs-td .num { text-align: right; display: block; }
+.gridjs-td .lbl { white-space: nowrap; }
