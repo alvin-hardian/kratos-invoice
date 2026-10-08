@@ -55,29 +55,6 @@ vendor/bin/phpunit tests --no-coverage
 php tests/e2e_verify.php   # draft→issue→accept→convert→issue→payments→snapshots→PDF
 ```
 
-## Importing history from Bookipi
-One-way migration of your existing Bookipi data (customers, items, all invoices + payments) via the official Bookipi CLI.
-- IDR only; original Bookipi numbers (e.g. `INV-650`) are preserved as frozen issued history; our `INV-YYMMNNN` counter is untouched. Voided → cancelled, drafts → drafts.
-1. Install Node 22+, then in a scratch folder:
-```
-git clone https://github.com/Bookipi-Group/bookipi-cli.git ~/bookipi-cli
-node ~/bookipi-cli/skills/bookipi-cli/bin/bookipi.js init   # browser OAuth sign-in
-```
-2. Dump JSON (`invoice list` already includes lines, payments, and totals — no per-invoice fetch needed; repeat `-p 2…` with `--limit 200` if you have more than 200 rows and merge the arrays):
-```
-bookipi invoice list --limit 200 --json > invoices.json
-bookipi customer list --limit 200 --json > customers.json
-bookipi item list --limit 200 --json > items.json
-```
-Save as `<dir>/invoices.json` (array; `invoice_details.json` also accepted), `<dir>/customers.json`, `<dir>/items.json`.
-3. Import (dry-run first):
-```
-php bin/import-bookipi.php --dir <dir> --dry-run
-php bin/import-bookipi.php --dir <dir> [--actor <user-id>]
-```
-- Idempotent: re-running skips existing numbers. Source-vs-recomputed total mismatches and non-IDR records are reported, never silently altered (`import-report.json` is written to the dir).
-- Sample input shapes: `tests/fixtures/bookipi/`.
-
 ## Notes / limitations
 - One internal-user role; sessions + CSRF on mutations; logo validated (PNG/JPG/WebP ≤2MB).
 - Commercial documents only — not e-Faktur tax invoices. Tax rates configurable (seed: No tax, PPN 12%, PPN 11%, PPh 23 2%).

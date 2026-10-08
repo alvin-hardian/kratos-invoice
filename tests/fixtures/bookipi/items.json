@@ -1,5 +1,0 @@
-{"searchItems": {"pageInfo": {"currentPage": 1, "pageCount": 1}, "items": [
-  {"name": "Design work", "description": "Logo design", "price": 5000000, "unitType": "none", "taxRate": null, "deleted": false},
-  {"name": "Consulting hour", "description": "Consulting", "price": 750000, "unitType": "hour", "taxRate": null, "deleted": false},
-  {"name": "Design work", "description": "duplicate", "price": 5000000, "unitType": "none", "taxRate": null, "deleted": false}
-]}}
