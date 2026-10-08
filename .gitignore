@@ -10,6 +10,11 @@ public/uploads/*
 !public/uploads/.gitkeep
 storage/*
 
+# generated test artifacts
+tests/e2e_sample.pdf
+tests/fixtures/bookipi/import-report.json
+import-report.json
+
 # OS / editors
 Thumbs.db
 Desktop.ini
