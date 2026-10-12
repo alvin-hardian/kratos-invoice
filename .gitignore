@@ -19,3 +19,7 @@ Desktop.ini
 .vscode/
 .idea/
 *.log
+
+# binaries - never push exe (tailwindcss.exe was 107MB and blocked push)
+*.exe
+bin/*.exe
