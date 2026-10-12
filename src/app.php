@@ -169,7 +169,13 @@ $app->post('/settings', function ($req, $res) use ($db) {
             return $res->withHeader('Location', '/settings')->withStatus(302);
         }
         $name = 'logo_' . time() . '.' . $allowed[$mime];
-        move_uploaded_file($f['tmp_name'], __DIR__ . '/../public/uploads/' . $name);
+        if (!move_uploaded_file($f['tmp_name'], __DIR__ . '/../public/uploads/' . $name)) {
+            flash('Logo upload failed (storage not writable).', 'danger');
+            return $res->withHeader('Location', '/settings')->withStatus(302);
+        }
+        if ($logo && str_starts_with(str_replace('\\', '/', $logo), 'uploads/')) {
+            @unlink(__DIR__ . '/../public/uploads/' . basename($logo));
+        }
         $logo = 'uploads/' . $name;
     }
     $db->prepare('UPDATE company_settings SET company_name=?, address=?, email=?, phone=?, tax_id=?, logo_path=?, quote_validity_days=?, invoice_payment_days=?, default_notes=?, default_terms=?, quote_prefix=?, invoice_prefix=? WHERE id=1')
@@ -537,14 +543,16 @@ $app->get('/summary', function ($req, $res) use ($db, $twig) {
 $app->get('/quotations/{id}/pdf', function ($req, $res, $a) use ($db, $twig) {
     $d = DocService::load($db, 'quote', (int)$a['id']);
     if (!$d) return $res->withStatus(404);
-    $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $d, 'kind' => 'quote', 'settings' => Repo::settings($db), 'font_dir' => realpath(__DIR__ . '/../public/fonts')], $twig);
+    $settings = Repo::settings($db);
+    $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $d, 'kind' => 'quote', 'settings' => $settings, 'logo_src' => \App\Support\Logo::dataUri(__DIR__ . '/../public', $settings['logo_path'] ?? null), 'font_dir' => realpath(__DIR__ . '/../public/fonts')], $twig);
     $dl = ($req->getQueryParams()['dl'] ?? '') === '1';
     return pdfResponse($res, $pdf, ($d['number'] ?? 'DRAFT') . '.pdf', $dl);
 });
 $app->get('/invoices/{id}/pdf', function ($req, $res, $a) use ($db, $twig) {
     $d = DocService::load($db, 'invoice', (int)$a['id']);
     if (!$d) return $res->withStatus(404);
-    $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $d, 'kind' => 'invoice', 'settings' => Repo::settings($db), 'font_dir' => realpath(__DIR__ . '/../public/fonts')], $twig);
+    $settings = Repo::settings($db);
+    $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $d, 'kind' => 'invoice', 'settings' => $settings, 'logo_src' => \App\Support\Logo::dataUri(__DIR__ . '/../public', $settings['logo_path'] ?? null), 'font_dir' => realpath(__DIR__ . '/../public/fonts')], $twig);
     $dl = ($req->getQueryParams()['dl'] ?? '') === '1';
     return pdfResponse($res, $pdf, ($d['number'] ?? 'DRAFT') . '.pdf', $dl);
 });

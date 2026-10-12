@@ -18,6 +18,7 @@ tr { page-break-inside: avoid; }
 .sec { background: #eef2ff; font-weight: bold; }
 </style></head><body>
 <div class="header">
+{% if logo_src %}<img src="{{ logo_src }}" style="max-height:56px;max-width:220px;margin-bottom:6px"><br>{% endif %}
 <h1>{{ settings.company_name }}</h1>
 <div class="meta">{{ settings.address }}<br>{{ settings.email }} · {{ settings.phone }}{% if settings.tax_id %} · NPWP: {{ settings.tax_id }}{% endif %}</div>
 <h2 style="margin-top:8px">{{ kind == 'quote' ? 'QUOTATION' : 'INVOICE' }} {{ d.number ? '#' ~ d.number : '(DRAFT — no permanent number)' }}</h2>

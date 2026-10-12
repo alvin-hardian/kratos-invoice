@@ -15,7 +15,7 @@
 <label class="text-sm font-medium">INV prefix<input class="field mt-1" name="invoice_prefix" value="{{ s.invoice_prefix }}"></label>
 <label class="text-sm font-medium md:col-span-2">Default notes<textarea class="field mt-1" name="default_notes">{{ s.default_notes }}</textarea></label>
 <label class="text-sm font-medium md:col-span-2">Default terms<textarea class="field mt-1" name="default_terms">{{ s.default_terms }}</textarea></label>
-<div class="text-sm font-medium md:col-span-2"><label>Logo (PNG/JPG/WebP, 2MB)<input class="field mt-1" type="file" name="logo" accept="image/*"></label>{% if s.logo_path %}<p class="mt-1 text-xs text-slate-500">Current: {{ s.logo_path }}</p>{% endif %}</div>
+<div class="text-sm font-medium md:col-span-2"><label>Logo (PNG/JPG/WebP, 2MB)<input class="field mt-1" type="file" name="logo" accept="image/*"></label>{% if s.logo_path %}<p class="mt-1 text-xs text-slate-500">Current: {{ s.logo_path }}</p><img src="/{{ s.logo_path }}" alt="Company logo" class="mt-2 max-h-16 max-w-56 border border-slate-200">{% endif %}</div>
 <div class="md:col-span-2"><button class="btn btn-primary">Save settings</button></div>
 </form></div></div>
 <div class="flex flex-col gap-4">
