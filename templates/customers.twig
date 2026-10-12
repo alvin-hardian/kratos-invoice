@@ -2,7 +2,7 @@
 {% block content %}
 <h2 class="font-display mb-4 text-2xl">Customers</h2>
 <form class="mb-3 flex flex-wrap gap-2" method="get"><input class="field max-w-xs" name="s" value="{{ q.s ?? '' }}" placeholder="Search"><select class="field max-w-[10rem]" name="arch"><option value="">All</option><option value="0" {{ q.arch=='0'?'selected' }}>Active</option><option value="1" {{ q.arch=='1'?'selected' }}>Archived</option></select><button class="btn btn-default">Search</button></form>
-<div id="cgrid" data-url="/api/grid/customers?s={{ (q.s ?? '')|url_encode }}&arch={{ (q.arch ?? '')|url_encode }}"></div>
+<div class="overflow-x-auto"><table id="cgrid" class="tbl w-full text-sm" data-url="/api/grid/customers?s={{ (q.s ?? '')|url_encode }}&arch={{ (q.arch ?? '')|url_encode }}"></table></div>
 <table class="tbl w-full text-sm" id="cgrid-fallback"><thead><tr><th class="px-3 py-2">Name</th><th class="px-3 py-2">Contact</th><th class="px-3 py-2">Phone</th><th class="px-3 py-2">Status</th><th class="px-3 py-2"></th></tr></thead><tbody>
 {% for r in rows %}<tr class="border-t border-slate-100"><td class="px-3 py-2"><a class="text-brand-600 hover:underline" href="/customers/{{ r.id }}">{{ r.name }}</a></td><td class="px-3 py-2">{{ r.contact_person }}</td><td class="px-3 py-2">{{ r.phone }}</td><td class="px-3 py-2">{{ r.archived ? 'Archived' : 'Active' }}</td><td class="px-3 py-2"><button class="btn btn-default btn-sm" onclick='editCustomer({{ r|json_encode }})'>Edit</button></td></tr>{% else %}<tr><td colspan="5" class="px-3 py-4 text-center text-slate-400">No customers yet.</td></tr>{% endfor %}
 </tbody></table>
@@ -20,26 +20,25 @@
 </form>
 {% endblock %}
 {% block scripts %}
-<link rel="stylesheet" href="{{ asset('vendor/gridjs/mermaid.min.css') }}">
-<link rel="stylesheet" href="{{ asset('css/grid-uikit.css') }}">
-<script src="{{ asset('vendor/gridjs/gridjs.umd.js') }}"></script>
+<link rel="stylesheet" href="{{ asset('vendor/datatables/dataTables.dataTables.min.css') }}">
+<link rel="stylesheet" href="{{ asset('css/datatables-uikit.css') }}">
+<script src="{{ asset('vendor/datatables/dataTables.min.js') }}"></script>
 <script src="{{ asset('js/grids.js') }}"></script>
 <script>
 function editCustomer(r){document.getElementById('c-id').value=r.id;document.getElementById('c-name').value=r.name||'';document.getElementById('c-contact').value=r.contact_person||'';document.getElementById('c-email').value=r.email||'';document.getElementById('c-phone').value=r.phone||'';document.getElementById('c-tax').value=r.tax_id||'';document.getElementById('c-addr').value=r.billing_address||'';document.getElementById('c-arch').checked=!!+r.archived;document.getElementById('cform-title').textContent='Edit customer';window.scrollTo(0,document.body.scrollHeight);}
-mountGrid('cgrid', {
-  columns: [
-    { id: 'name', name: 'Name', formatter: function(c, row) {
-      return gridjs.html('<a class="text-brand-600 hover:underline" href="/customers/' + row.cells[5].data + '">' + escapeHtml(c) + '</a>');
-    }},
-    { id: 'contact', name: 'Contact' },
-    { id: 'email', name: 'Email' },
-    { id: 'phone', name: 'Phone' },
-    { id: 'status', name: 'Status' },
-    { id: 'id', name: '', sort: false, formatter: function(c) {
-      return gridjs.html('<button class="btn btn-default btn-sm" data-edit-cust="' + c + '">Edit</button>');
-    }}
-  ]
-});
+mountDataTable('cgrid', [
+  { data: 'name', title: 'Name', render: function(d, t, row) {
+    if (t !== 'display' && t !== 'filter') return d;
+    return '<a class="text-brand-600 hover:underline" href="/customers/' + row.id + '">' + escapeHtml(d) + '</a>';
+  }},
+  { data: 'contact', title: 'Contact' },
+  { data: 'email', title: 'Email' },
+  { data: 'phone', title: 'Phone' },
+  { data: 'status', title: 'Status' },
+  { data: 'id', title: '', orderable: false, searchable: false, render: function(d) {
+    return '<button class="btn btn-default btn-sm" data-edit-cust="' + d + '">Edit</button>';
+  }}
+]);
 document.getElementById('cgrid').addEventListener('click', function(ev) {
   var b = ev.target.closest('[data-edit-cust]');
   if (!b) return;

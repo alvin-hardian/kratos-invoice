@@ -20,31 +20,29 @@
 <div class="card p-4"><div class="text-sm text-slate-500">DP received</div><div class="font-display text-xl">{{ dpGot|idr }}</div></div>
 <div class="card p-4"><div class="text-sm text-slate-500">DP still due</div><div class="font-display text-xl">{{ dpDue|idr }}</div></div>
 </div>
-<div id="sgrid" class="mt-4" data-url="/api/grid/summary?from={{ from|url_encode }}&to={{ to|url_encode }}&customer_id={{ (q.customer_id ?? '')|url_encode }}&s={{ (q.s ?? '')|url_encode }}"></div>
+<div class="mt-4 overflow-x-auto"><table id="sgrid" class="tbl w-full text-sm" data-url="/api/grid/summary?from={{ from|url_encode }}&to={{ to|url_encode }}&customer_id={{ (q.customer_id ?? '')|url_encode }}&s={{ (q.s ?? '')|url_encode }}"></table></div>
 <table class="tbl mt-4 w-full text-sm" id="sgrid-fallback"><thead><tr><th class="px-3 py-2">Number</th><th class="px-3 py-2">Customer</th><th class="px-3 py-2">Date</th><th class="px-3 py-2 text-right">Total</th><th class="px-3 py-2 text-right">DP req</th><th class="px-3 py-2 text-right">DP paid</th><th class="px-3 py-2 text-right">Paid</th><th class="px-3 py-2 text-right">Balance</th></tr></thead><tbody>
 {% for r in rows %}<tr class="border-t border-slate-100"><td class="px-3 py-2"><a class="text-brand-600 hover:underline" href="/invoices/{{ r.id }}">{{ r.number }}</a></td><td class="px-3 py-2">{{ r.customer_name }}</td><td class="px-3 py-2">{{ r.doc_date|d }}</td><td class="px-3 py-2 text-right">{{ r.total|idr }}</td><td class="px-3 py-2 text-right">{{ r.dp_amount|idr }}</td><td class="px-3 py-2 text-right">{{ r.dp_paid|idr }}</td><td class="px-3 py-2 text-right">{{ r.paid|idr }}</td><td class="px-3 py-2 text-right">{{ (r.total - r.paid)|idr }}</td></tr>{% else %}<tr><td colspan="8" class="px-3 py-4 text-center text-slate-400">No data.</td></tr>{% endfor %}
 </tbody></table>
 {% endblock %}
 {% block scripts %}
-<link rel="stylesheet" href="{{ asset('vendor/gridjs/mermaid.min.css') }}">
-<link rel="stylesheet" href="{{ asset('css/grid-uikit.css') }}">
-<script src="{{ asset('vendor/gridjs/gridjs.umd.js') }}"></script>
+<link rel="stylesheet" href="{{ asset('vendor/datatables/dataTables.dataTables.min.css') }}">
+<link rel="stylesheet" href="{{ asset('css/datatables-uikit.css') }}">
+<script src="{{ asset('vendor/datatables/dataTables.min.js') }}"></script>
 <script src="{{ asset('js/grids.js') }}"></script>
 <script>
-mountGrid('sgrid', {
-  columns: [
-    { id: 'number', name: 'Number', formatter: function(c, row) {
-      return gridjs.html('<a class="text-brand-600 hover:underline" href="/invoices/' + row.cells[8].data + '">' + escapeHtml(c) + '</a>');
-    }},
-    { id: 'customer', name: 'Customer' },
-    { id: 'date_iso', name: 'Date', formatter: function(c) { return fmtDateIso(c); } },
-    { id: 'total_num', name: 'Total', formatter: function(c) { return gridjs.html('<span class="num">' + fmtMoney(c) + '</span>'); } },
-    { id: 'dp_req', name: 'DP req' },
-    { id: 'dp_paid', name: 'DP paid' },
-    { id: 'paid', name: 'Paid' },
-    { id: 'bal_num', name: 'Balance', formatter: function(c) { return gridjs.html('<span class="num">' + fmtMoney(c) + '</span>'); } },
-    { id: 'id', hidden: true }
-  ]
-});
+mountDataTable('sgrid', [
+  { data: 'number', title: 'Number', render: function(d, t, row) {
+    if (t !== 'display' && t !== 'filter') return d;
+    return '<a class="text-brand-600 hover:underline" href="/invoices/' + row.id + '">' + escapeHtml(d) + '</a>';
+  }},
+  { data: 'customer', title: 'Customer' },
+  { data: 'date_iso', title: 'Date', render: dateCell },
+  { data: 'total_num', title: 'Total', className: 'dt-right', render: moneyCell },
+  { data: 'dp_req_num', title: 'DP req', className: 'dt-right', render: moneyCell },
+  { data: 'dp_paid_num', title: 'DP paid', className: 'dt-right', render: moneyCell },
+  { data: 'paid_num', title: 'Paid', className: 'dt-right', render: moneyCell },
+  { data: 'bal_num', title: 'Balance', className: 'dt-right', render: moneyCell }
+]);
 </script>
 {% endblock %}

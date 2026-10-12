@@ -3,6 +3,9 @@ const E = window.EDITOR;
 const fmtIDR = n => 'Rp' + Math.round(n).toLocaleString('id-ID');
 const parseIDR = v => { if (v==null||v==='') return 0; let s=String(v).replace(/[^0-9,\.\-]/g,''); if (s.includes(',')) s=s.split(',')[0]; s=s.replace(/\./g,''); return parseInt(s.replace(/[^0-9\-]/g,''))||0; };
 const parseQty = v => { if (v==null||v==='') return 0; let s=String(v).trim(); s=s.replace(',', '.'); s=s.replace(/[^0-9.\-]/g,''); return parseFloat(s)||0; };
+const isPcs = u => /^(pcs?|pieces?)$/i.test(String(u||'').trim());
+const fmtQty = (v, unit) => { if (v==null||v==='') return ''; const s=String(v).replace(',', '.'); if (s.trim()===''||isNaN(parseFloat(s))) return String(v??''); if (isPcs(unit)) return String(Math.round(parseFloat(s))); let t=parseFloat(s).toFixed(3); t=t.replace(/\.?0+$/, ''); return t===''?'0':t; };
+const lineBreakdown = l => { if (l.waived) return 'waived'; const q=(fmtQty(l.quantity, l.unit_label)||'0')+' '+(l.unit_label||''); if (l.mult_enabled) return q+' × '+(fmtQty(l.mult_value)||'0')+' '+(l.mult_label||'')+' × '+fmtIDR(l.unit_price); return q+' × '+fmtIDR(l.unit_price); };
 function lineAmount(l){ if (l.waived) return 0; const q=parseFloat(l.quantity)||0, p=parseIDR(l.unit_price); if(q<=0) return 0; if(l.mult_enabled){ const m=parseFloat(l.mult_value)||0; if(m<=0) return 0; return Math.round(q*m*p);} return Math.round(q*p); }
 function calcAll(sections, dt, dv, pt, pv){
   const flat = sections.flatMap(s=>s.lines);
@@ -80,13 +83,13 @@ function render(){
       <div class="mb-2"><select class="prod-pick field" data-s="${si}" data-l="${li}" placeholder="Type to search products, or describe a custom line below…"></select></div>
       <div class="grid grid-cols-2 md:grid-cols-12 gap-2">
         <div class="col-span-2 md:col-span-12"><textarea class="field" rows="2" data-s="${si}" data-l="${li}" data-f="description" placeholder="Description *">${esc(l.description)}</textarea></div>
-        <div class="md:col-span-2"><label class="text-xs font-medium text-slate-600">Qty<input class="field mt-0.5" data-s="${si}" data-l="${li}" data-f="quantity" value="${esc(l.quantity??1)}"></label></div>
+        <div class="md:col-span-2"><label class="text-xs font-medium text-slate-600">Qty<input class="field mt-0.5" data-s="${si}" data-l="${li}" data-f="quantity" value="${esc(fmtQty(l.quantity ?? 1, l.unit_label))}"></label></div>
         <div class="md:col-span-2"><label class="text-xs font-medium text-slate-600">Unit<input class="field mt-0.5" data-s="${si}" data-l="${li}" data-f="unit_label" value="${esc(l.unit_label||'pcs')}" list="units"></label></div>
         <div class="md:col-span-3"><label class="text-xs font-medium text-slate-600">Unit price (IDR)<input class="field mt-0.5" data-s="${si}" data-l="${li}" data-f="unit_price" value="${esc(l.unit_price??0)}"></label></div>
         <div class="md:col-span-3"><label class="text-xs font-medium text-slate-600">Tax<select class="field mt-0.5" data-s="${si}" data-l="${li}" data-f="tax_rate_id">${taxOptions(l.tax_rate_id)}</select></label></div>
         <div class="md:col-span-2 flex items-end"><button type="button" class="btn btn-danger btn-sm" data-delline="${si}|${li}">Remove</button></div>
         <div class="md:col-span-6"><label class="flex items-center gap-2 text-sm"><input type="checkbox" class="h-4 w-4 accent-brand-600" data-s="${si}" data-l="${li}" data-f="mult_enabled" ${l.mult_enabled?'checked':''}> Use multiplier</label>
-          <span class="mult-ctl mt-1 flex gap-2" style="${l.mult_enabled?'':'display:none'}"><input class="field max-w-[7rem]" data-s="${si}" data-l="${li}" data-f="mult_value" value="${esc(l.mult_value??1)}" placeholder="e.g. 1.5"> <input class="field max-w-[9rem]" data-s="${si}" data-l="${li}" data-f="mult_label" value="${esc(l.mult_label||'days')}" placeholder="days"></span></div>
+          <span class="mult-ctl mt-1 flex gap-2" style="${l.mult_enabled?'':'display:none'}"><input class="field max-w-[7rem]" data-s="${si}" data-l="${li}" data-f="mult_value" value="${esc(fmtQty(l.mult_value ?? 1))}" placeholder="e.g. 1.5"> <input class="field max-w-[9rem]" data-s="${si}" data-l="${li}" data-f="mult_label" value="${esc(l.mult_label||'days')}" placeholder="days"></span></div>
         <div class="md:col-span-6"><label class="flex items-center gap-2 text-sm"><input type="checkbox" class="h-4 w-4 accent-brand-600" data-s="${si}" data-l="${li}" data-f="waived" ${l.waived?'checked':''}> Zero-price (waived)</label>
           <span class="waive-ctl mt-1" style="${l.waived?'':'display:none'}"><select class="field max-w-[10rem]" data-s="${si}" data-l="${li}" data-f="price_mode"><option value="waived">Waived</option><option value="compliment" ${l.price_mode==='compliment'?'selected':''}>Compliment</option><option value="included" ${l.price_mode==='included'?'selected':''}>Included</option></select></span></div>
         <div class="md:col-span-12 text-xs text-slate-500">Line total: <b class="line-amt"></b></div>
@@ -136,8 +139,8 @@ function totals(){
   let idx=0; const secSubs=E.sections.map(sec=>{let s=0; sec.lines.forEach(()=>{s+=r.amounts[idx++];}); return s;});
   const cards=document.getElementById('sections').children;
   [...cards].forEach((el,i)=>{ const sub=el.querySelector('.sec-sub'); if(sub) sub.textContent='Section subtotal: '+fmtIDR(secSubs[i]); });
-  const flat=r.amounts; let k=0;
-  document.querySelectorAll('#sections .line-amt').forEach(el=>{ el.textContent=fmtIDR(flat[k++]); });
+  const flat=r.amounts; const flatLines=E.sections.flatMap(s=>s.lines); let k=0;
+  document.querySelectorAll('#sections .line-amt').forEach(el=>{ const l=flatLines[k]; el.textContent=fmtIDR(flat[k])+' ('+lineBreakdown(l||{})+')'; k++; });
   let h=`<table class="w-full"><tr><td class="py-1">Subtotal</td><td class="py-1 text-right">${fmtIDR(r.subtotal)}</td></tr><tr><td class="py-1">Discount</td><td class="py-1 text-right">− ${fmtIDR(r.disc)}</td></tr>`;
   r.breakdown.forEach(b=>{h+=`<tr><td class="py-1">Tax ${b.rate}%</td><td class="py-1 text-right">${fmtIDR(b.tax)}</td></tr>`;});
   h+=`<tr class="font-semibold"><td class="py-1">Total</td><td class="py-1 text-right">${fmtIDR(r.total)}</td></tr><tr><td class="py-1">Requested DP</td><td class="py-1 text-right">${fmtIDR(r.dp)}</td></tr><tr><td class="py-1">Remaining after DP</td><td class="py-1 text-right">${fmtIDR(r.remain)}</td></tr></table>`;

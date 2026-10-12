@@ -27,6 +27,7 @@ $app->addErrorMiddleware((bool)(getenv('APP_DEBUG') ?: true), true, true);
 $db = DB::pdo();
 $twig->getEnvironment()->addFilter(new \Twig\TwigFilter('idr', fn($n) => Format::idr((int)$n)));
 $twig->getEnvironment()->addFilter(new \Twig\TwigFilter('d', fn($v) => Format::escDate($v)));
+$twig->getEnvironment()->addFilter(new \Twig\TwigFilter('qty', fn($v, $unit = null) => Format::qty($v, $unit)));
 $twig->getEnvironment()->addFilter(new \Twig\TwigFilter('json_decode', fn($v) => json_decode((string)$v, true)));
 $twig->getEnvironment()->addFunction(new \Twig\TwigFunction('csrf', fn() => '<input type="hidden" name="csrf" value="' . htmlspecialchars($_SESSION['csrf'] ?? '', ENT_QUOTES, 'UTF-8') . '">', ['is_safe' => ['html']]));
 $twig->getEnvironment()->addFunction(new \Twig\TwigFunction('asset', function (string $p) {
@@ -470,7 +471,7 @@ $app->get('/api/grid/products', function ($req, $res) use ($db) {
     $st->execute($par);
     $rows = array_map(fn($r) => ['id' => (int)$r['id'], 'name' => $r['name'], 'unit' => $r['unit_label'],
         'price_num' => (int)$r['unit_price'], 'price' => Format::idr((int)$r['unit_price']),
-        'mult' => $r['mult_enabled_default'] ? ($r['mult_value'] . ' ' . ($r['mult_label'] ?? '')) : '-',
+        'mult' => $r['mult_enabled_default'] ? (Format::qty($r['mult_value']) . ' ' . ($r['mult_label'] ?? '')) : '-',
         'tax' => $r['tax_code'] ?? '-', 'status' => $r['active'] ? 'Active' : 'Archived'], $st->fetchAll());
     return gridJson($res, $rows);
 });
@@ -485,8 +486,10 @@ $app->get('/api/grid/summary', function ($req, $res) use ($db) {
     $out = array_map(fn($r) => ['id' => (int)$r['id'], 'number' => $r['number'], 'customer' => $r['customer_name'] ?? '-',
         'date_iso' => $r['doc_date'], 'date' => Format::escDate($r['doc_date']),
         'total_num' => (int)$r['total'], 'total' => Format::idr((int)$r['total']),
-        'dp_req' => Format::idr((int)$r['dp_amount']), 'dp_paid' => Format::idr((int)$r['dp_paid']),
-        'paid' => Format::idr((int)$r['paid']), 'bal_num' => max(0, (int)$r['total'] - (int)$r['paid']),
+        'dp_req_num' => (int)$r['dp_amount'], 'dp_req' => Format::idr((int)$r['dp_amount']),
+        'dp_paid_num' => (int)$r['dp_paid'], 'dp_paid' => Format::idr((int)$r['dp_paid']),
+        'paid_num' => (int)$r['paid'], 'paid' => Format::idr((int)$r['paid']),
+        'bal_num' => max(0, (int)$r['total'] - (int)$r['paid']),
         'balance' => Format::idr(max(0, (int)$r['total'] - (int)$r['paid']))], $rows);
     return gridJson($res, $out);
 });

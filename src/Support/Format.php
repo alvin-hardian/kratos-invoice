@@ -35,6 +35,22 @@ final class Format
         $s = preg_replace('/[^0-9\.\-]/', '', $s) ?? '';
         return (float) $s;
     }
+    /** Format DECIMAL(10,3) qty/mult values without trailing zeros ("3.000"->"3", "1.500"->"1.5").
+     *  Piece units (pcs/pc/piece/pieces) never show decimals: rounded to whole numbers. */
+    public static function qty(mixed $v, ?string $unit = null): string
+    {
+        if ($v === null || $v === '') return '';
+        $s = trim((string) $v);
+        $s = str_replace(',', '.', $s);
+        if (!is_numeric($s)) return $s;
+        $f = (float) $s;
+        if ($unit !== null && preg_match('/^(pcs?|pieces?)$/i', trim($unit))) {
+            return (string) (int) round($f);
+        }
+        $s = number_format($f, 3, '.', '');
+        $s = rtrim(rtrim($s, '0'), '.');
+        return $s === '' ? '0' : $s;
+    }
     public static function today(): string
     {
         return date('Y-m-d');
