@@ -49,6 +49,30 @@ Open http://127.0.0.1:8099/login
 ## Calculation policy
 Line = waived ? 0 : round(qty × [mult ×] price) → subtotal → discount pre-tax (proportional allocation, largest remainder) → exclusive tax per rate → total. DP % computed on final total. Backend authoritative; JS mirrors it.
 
+## MCP (Model Context Protocol, Streamable HTTP)
+
+Exposes the app to AI agents over `POST /mcp` (JSON-RPC 2.0, native PHP, no extra runtime).
+25 tools reusing the same `DocService`/`Calculator` validation, transactions and totals as the web UI:
+reads (`dashboard_stats`, `list/get_*`, `get_summary`, `preview_calculation`) + writes
+(`create/update_customer`, `create/update/issue/duplicate/convert` quotations & invoices,
+`set_quotation_status`, `cancel_invoice`, `record/void_payment`).
+
+Setup:
+```
+php bin/mcp-token.php --write   # writes MCP_TOKEN to .env (backup .env.bak)
+run.bat                         # endpoint: http://127.0.0.1:8099/mcp
+```
+Every request needs `Authorization: Bearer <MCP_TOKEN>`. Optional `.env` knobs:
+`MCP_ENABLED=1`, `MCP_ACTOR_ID=` (audit actor, empty = system), `MCP_READONLY=0`.
+Health check: `GET /mcp` (same Bearer auth) returns server info + tool count.
+
+Example:
+```
+curl -H "Authorization: Bearer $MCP_TOKEN" -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"dashboard_stats","arguments":{}}}' \
+  http://127.0.0.1:8099/mcp
+```
+
 ## Tests
 ```
 vendor/bin/phpunit tests --no-coverage

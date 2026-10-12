@@ -572,4 +572,50 @@ function pdfResponse($res, string $pdf, string $name, bool $dl) {
     return $res->withHeader('Content-Type', 'application/pdf')->withHeader('Content-Disposition', ($dl ? 'attachment' : 'inline') . '; filename="' . $name . '"');
 }
 
+// ---- MCP (Streamable HTTP, Bearer token; HTTP-only, no STDIO) ----
+$app->get('/mcp', function ($req, $res) use ($db) {
+    if (!\App\Mcp\Auth::enabled()) {
+        $res->getBody()->write(json_encode(\App\Mcp\McpRouter::error(null, -32000, 'MCP disabled. Set MCP_TOKEN in .env.')));
+        return $res->withHeader('Content-Type', 'application/json')->withStatus(503);
+    }
+    if (!\App\Mcp\Auth::verify($req->getHeaderLine('Authorization'))) {
+        $res->getBody()->write(json_encode(\App\Mcp\McpRouter::error(null, -32001, 'Unauthorized: invalid MCP_TOKEN.')));
+        return $res->withHeader('Content-Type', 'application/json')->withStatus(401);
+    }
+    $res->getBody()->write(json_encode([
+        'name' => \App\Mcp\McpRouter::SERVER_NAME,
+        'version' => \App\Mcp\McpRouter::SERVER_VERSION,
+        'protocolVersion' => '2025-06-18',
+        'transport' => 'streamable-http',
+        'tools' => count(\App\Mcp\ToolRegistry::definitions()),
+        'readOnly' => \App\Mcp\Auth::readOnly(),
+    ], JSON_UNESCAPED_UNICODE));
+    return $res->withHeader('Content-Type', 'application/json');
+});
+$app->post('/mcp', function ($req, $res) use ($db) {
+    if (!\App\Mcp\Auth::enabled()) {
+        $res->getBody()->write(json_encode(\App\Mcp\McpRouter::error(null, -32000, 'MCP disabled. Set MCP_TOKEN in .env.')));
+        return $res->withHeader('Content-Type', 'application/json')->withStatus(503);
+    }
+    if (!\App\Mcp\Auth::verify($req->getHeaderLine('Authorization'))) {
+        $id = null;
+        try { $tmp = json_decode((string)$req->getBody(), true); $id = is_array($tmp) ? ($tmp['id'] ?? null) : null; } catch (\Throwable) {}
+        $res->getBody()->write(json_encode(\App\Mcp\McpRouter::error($id, -32001, 'Unauthorized: invalid MCP_TOKEN.')));
+        return $res->withHeader('Content-Type', 'application/json')->withStatus(401);
+    }
+    $raw = (string)$req->getBody();
+    if (trim($raw) === '') {
+        $res->getBody()->write(json_encode(\App\Mcp\McpRouter::error(null, -32700, 'Parse error: empty body.')));
+        return $res->withHeader('Content-Type', 'application/json')->withStatus(400);
+    }
+    $decoded = json_decode($raw, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        $res->getBody()->write(json_encode(\App\Mcp\McpRouter::error(null, -32700, 'Parse error: ' . json_last_error_msg())));
+        return $res->withHeader('Content-Type', 'application/json')->withStatus(400);
+    }
+    [$status, $payload] = \App\Mcp\McpRouter::dispatch($decoded, $db);
+    if ($payload !== null) $res->getBody()->write(json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
+    return $res->withHeader('Content-Type', 'application/json')->withStatus($status);
+});
+
 return $app;

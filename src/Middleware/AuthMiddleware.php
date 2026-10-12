@@ -13,7 +13,7 @@ final class AuthMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $req, RequestHandlerInterface $h): ResponseInterface
     {
         $path = $req->getUri()->getPath();
-        if (str_starts_with($path, '/login') || str_starts_with($path, '/assets') || str_starts_with($path, '/fonts') || str_starts_with($path, '/css') || str_starts_with($path, '/js')) {
+        if (str_starts_with($path, '/login') || str_starts_with($path, '/mcp') || str_starts_with($path, '/assets') || str_starts_with($path, '/fonts') || str_starts_with($path, '/css') || str_starts_with($path, '/js')) {
             return $h->handle($req);
         }
         if (empty($_SESSION['uid'])) {
