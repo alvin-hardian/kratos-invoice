@@ -8,6 +8,21 @@ use PDO;
 
 final class DocService
 {
+    /** Whether the connected DB has invoices.show_signature (old DBs may be unmigrated). */
+    private static function invoiceHasSignature(PDO $db): bool
+    {
+        static $cache = [];
+        $key = spl_object_id($db);
+        if (!array_key_exists($key, $cache)) {
+            try {
+                $cache[$key] = (bool)$db->query("SHOW COLUMNS FROM invoices LIKE 'show_signature'")->fetch();
+            } catch (\Throwable) {
+                $cache[$key] = false;
+            }
+        }
+        return $cache[$key];
+    }
+
     public static function normalizePayload(array $post, PDO $db): array
     {
         $taxMap = Repo::taxMap($db);
@@ -84,7 +99,7 @@ final class DocService
                 $row = $st->fetch();
                 if (!$row) throw new \RuntimeException('Document not found.');
                 if ($row['status'] !== 'draft') throw new \RuntimeException('Only drafts can be edited.');
-                if ($kind === 'invoice') {
+                if ($kind === 'invoice' && self::invoiceHasSignature($db)) {
                     $u = $db->prepare("UPDATE $t SET customer_id=?, doc_date=?, $dateCol=?, reference=?, subtotal=?, discount_type=?, discount_value=?, discount_amount=?, tax_total=?, tax_breakdown=?, total=?, dp_type=?, dp_value=?, dp_amount=?, dp_due_date=?, notes=?, terms=?, show_signature=? WHERE id=?");
                     $u->execute([$p['customer_id'], $p['doc_date'], $dateVal, $p['reference'] ?: null, $p['calc']['subtotal'], $p['discount_type'], $p['discount_value'], $p['calc']['discount_amount'], $p['calc']['tax_total'], json_encode($p['calc']['tax_breakdown']), $p['calc']['total'], $p['dp_type'], $p['dp_value'], $p['calc']['dp_amount'], $p['dp_due_date'], $p['notes'] ?: null, $p['terms'] ?: null, $sig, $id]);
                 } else {
@@ -92,7 +107,7 @@ final class DocService
                     $u->execute([$p['customer_id'], $p['doc_date'], $dateVal, $p['reference'] ?: null, $p['calc']['subtotal'], $p['discount_type'], $p['discount_value'], $p['calc']['discount_amount'], $p['calc']['tax_total'], json_encode($p['calc']['tax_breakdown']), $p['calc']['total'], $p['dp_type'], $p['dp_value'], $p['calc']['dp_amount'], $p['dp_due_date'], $p['notes'] ?: null, $p['terms'] ?: null, $id]);
                 }
             } else {
-                if ($kind === 'invoice') {
+                if ($kind === 'invoice' && self::invoiceHasSignature($db)) {
                     $u = $db->prepare("INSERT INTO $t (customer_id, doc_date, $dateCol, reference, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, show_signature, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
                     $u->execute([$p['customer_id'], $p['doc_date'], $dateVal, $p['reference'] ?: null, $p['calc']['subtotal'], $p['discount_type'], $p['discount_value'], $p['calc']['discount_amount'], $p['calc']['tax_total'], json_encode($p['calc']['tax_breakdown']), $p['calc']['total'], $p['dp_type'], $p['dp_value'], $p['calc']['dp_amount'], $p['dp_due_date'], $p['notes'] ?: null, $p['terms'] ?: null, $sig, $actor]);
                 } else {
@@ -232,8 +247,13 @@ final class DocService
             $full = self::load($db, 'quote', $qid);
             $settings = Repo::settings($db);
             $due = date('Y-m-d', strtotime($full['doc_date'] . ' +' . (int)($settings['invoice_payment_days'] ?? 14) . ' days'));
-            $ins = $db->prepare('INSERT INTO invoices (customer_id, doc_date, due_date, reference, source_quotation_id, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, show_signature, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-            $ins->execute([$full['customer_id'], $full['doc_date'], $due, $full['reference'], $qid, $full['subtotal'], $full['discount_type'], $full['discount_value'], $full['discount_amount'], $full['tax_total'], $full['tax_breakdown'], $full['total'], $full['dp_type'], $full['dp_value'], $full['dp_amount'], $full['dp_due_date'], $full['notes'], $full['terms'], 0, $actor]);
+            if (self::invoiceHasSignature($db)) {
+                $ins = $db->prepare('INSERT INTO invoices (customer_id, doc_date, due_date, reference, source_quotation_id, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, show_signature, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+                $ins->execute([$full['customer_id'], $full['doc_date'], $due, $full['reference'], $qid, $full['subtotal'], $full['discount_type'], $full['discount_value'], $full['discount_amount'], $full['tax_total'], $full['tax_breakdown'], $full['total'], $full['dp_type'], $full['dp_value'], $full['dp_amount'], $full['dp_due_date'], $full['notes'], $full['terms'], 0, $actor]);
+            } else {
+                $ins = $db->prepare('INSERT INTO invoices (customer_id, doc_date, due_date, reference, source_quotation_id, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+                $ins->execute([$full['customer_id'], $full['doc_date'], $due, $full['reference'], $qid, $full['subtotal'], $full['discount_type'], $full['discount_value'], $full['discount_amount'], $full['tax_total'], $full['tax_breakdown'], $full['total'], $full['dp_type'], $full['dp_value'], $full['dp_amount'], $full['dp_due_date'], $full['notes'], $full['terms'], $actor]);
+            }
             $iid = (int)$db->lastInsertId();
             foreach ($full['sections'] as $si => $sec) {
                 $db->prepare('INSERT INTO invoice_sections (invoice_id, title, description, sort_order) VALUES (?,?,?,?)')->execute([$iid, $sec['title'], $sec['description'], $si]);
