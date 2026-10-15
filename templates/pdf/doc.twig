@@ -1,53 +1,84 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
+@page { margin: 34px 32px; }
 @font-face { font-family: 'Inter'; src: url('{{ font_dir }}/Inter-Regular.ttf'); font-weight: normal; }
 @font-face { font-family: 'Inter'; src: url('{{ font_dir }}/Inter-Medium.ttf'); font-weight: bold; }
-@font-face { font-family: 'Oswald'; src: url('{{ font_dir }}/Oswald-Medium.ttf'); }
-body { font-family: 'Inter', sans-serif; font-size: 11px; color: #111; }
-h1, h2, h3 { font-family: 'Oswald', sans-serif; font-weight: 500; margin: 0 0 6px 0; }
-.header { border-bottom: 3px solid #1e40af; padding-bottom: 8px; margin-bottom: 12px; }
+body { font-family: 'Inter', sans-serif; font-size: 11px; color: #1e293b; line-height: 1.45; }
+h1, h2, h3 { font-family: 'Inter', sans-serif; font-weight: bold; margin: 0 0 6px 0; color: #0f172a; }
+.topbar { background: #1e40af; height: 6px; margin: -34px -32px 14px -32px; }
+.company { font-size: 20px; font-weight: bold; color: #1e40af; margin: 0 0 2px 0; }
+.meta { color: #64748b; font-size: 10px; }
+.doc-label { display: inline-block; background: #1e40af; color: #ffffff; font-size: 13px; font-weight: bold; letter-spacing: 1px; padding: 3px 12px; margin-bottom: 4px; }
+.doc-number { font-size: 15px; font-weight: bold; color: #0f172a; }
+.doc-meta { font-size: 10px; color: #475569; }
+.draft { color: #b91c1c; border: 2px solid #b91c1c; display: inline-block; padding: 2px 10px; font-size: 14px; font-weight: bold; margin: 6px 0; }
 table { width: 100%; border-collapse: collapse; }
-th { background: #eef2ff; text-align: left; }
-th, td { border: 1px solid #ccc; padding: 5px 6px; vertical-align: top; }
+.panel td { border: 1px solid #dbe3f5; background: #f6f9ff; padding: 8px 10px; vertical-align: top; }
+.panel .lbl { font-size: 9px; font-weight: bold; color: #1e40af; letter-spacing: 1px; margin-bottom: 3px; }
+.items th { background: #1e40af; color: #ffffff; font-size: 9px; letter-spacing: 0.5px; text-align: left; padding: 7px 8px; border: 1px solid #1e40af; }
+.items td { border: 1px solid #dbe3f5; padding: 6px 8px; vertical-align: top; }
+.sec { background: #e8effe; font-weight: bold; color: #1e3a8a; }
+.sec-desc { font-weight: normal; color: #475569; }
 thead { display: table-header-group; }
 tr { page-break-inside: avoid; }
-.totals td { border: none; border-bottom: 1px solid #ddd; }
 .right { text-align: right; }
-.draft { color: #b91c1c; border: 2px solid #b91c1c; display: inline-block; padding: 2px 10px; font-size: 16px; margin-bottom: 8px; }
-.meta { color: #444; }
-.sec { background: #eef2ff; font-weight: bold; }
+.center { text-align: center; }
 .nowrap { white-space: nowrap; }
+.totals-wrap { margin-top: 10px; }
+.totals { width: 62%; margin-left: 38%; }
+.totals td { border: none; border-bottom: 1px solid #e2e8f0; padding: 4px 2px 4px 8px; }
+.totals td:last-child { text-align: right; white-space: nowrap; }
+.totals .grand td { background: #1e40af; color: #ffffff; font-weight: bold; border-bottom: none; padding: 7px 2px 7px 8px; }
+.totals .due td { background: #fef2f2; color: #b91c1c; font-weight: bold; border: 1px solid #fecaca; padding: 7px 2px 7px 8px; }
+.box { border: 1px solid #dbe3f5; background: #f8fafc; padding: 8px 10px; margin-top: 10px; }
+.box h3 { font-size: 10px; letter-spacing: 1px; color: #1e40af; margin: 0 0 4px 0; }
+.box p { margin: 3px 0; }
+.sign { margin-top: 20px; }
+.sign td { border: none; padding: 0; vertical-align: top; }
+.sig { width: 44%; text-align: center; }
+.sig .sig-name { font-weight: bold; text-decoration: underline; }
+.footer { margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 6px; font-size: 9px; color: #94a3b8; text-align: center; }
 </style></head><body>
-<div class="header">
-{% if logo_src %}<img src="{{ logo_src }}" style="max-height:56px;max-width:220px;margin-bottom:6px"><br>{% endif %}
-<h1>{{ settings.company_name }}</h1>
+<div class="topbar"></div>
+<table style="margin-bottom:12px"><tr>
+<td style="vertical-align:top">
+{% if logo_src %}<img src="{{ logo_src }}" style="max-height:52px;max-width:220px;margin-bottom:6px"><br>{% endif %}
+<div class="company">{{ settings.company_name }}</div>
 <div class="meta">{{ settings.address }}<br>{{ settings.email }} · {{ settings.phone }}{% if settings.tax_id %} · NPWP: {{ settings.tax_id }}{% endif %}</div>
-<h2 style="margin-top:8px">{{ kind == 'quote' ? 'QUOTATION' : 'INVOICE' }} {{ d.number ? '#' ~ d.number : '(DRAFT — no permanent number)' }}</h2>
+</td>
+<td style="vertical-align:top;text-align:right">
+<div class="doc-label">{{ kind == 'quote' ? 'QUOTATION' : 'INVOICE' }}</div><br>
+<div class="doc-number">{{ d.number ? '#' ~ d.number : '(DRAFT — no permanent number)' }}</div>
+<div class="doc-meta">Date: {{ d.doc_date }}<br>{% if kind=='quote' %}Valid until: {{ d.expiry_date }}{% else %}Due: {{ d.due_date }}{% endif %}<br>Ref: {{ d.reference ?? '-' }}</div>
 {% if not d.number %}<div class="draft">DRAFT</div>{% endif %}
-</div>
-<table style="border:none;margin-bottom:10px"><tr>
-<td style="border:none"><b>Bill to:</b><br>{{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).name : '') }}<br><span class="meta">{{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).billing_address : '') }}<br>{{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).email : '') }} {{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).phone : '') }}</span></td>
-<td style="border:none" class="right">Date: {{ d.doc_date }}<br>{% if kind=='quote' %}Valid until: {{ d.expiry_date }}{% else %}Due: {{ d.due_date }}{% endif %}<br>Ref: {{ d.reference ?? '-' }}</td>
+</td>
 </tr></table>
-<table><thead><tr><th>No</th><th>Description</th><th>Qty</th><th>Multiplier</th><th>Unit price</th><th class="right">Amount</th></tr></thead><tbody>
+<table class="panel" style="margin-bottom:10px"><tr>
+<td style="width:60%"><div class="lbl">BILL TO</div><b>{{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).name : '') }}</b><br><span class="meta">{{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).billing_address : '') }}<br>{{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).email : '') }} {{ (d.customer_snapshot ? (d.customer_snapshot|json_decode).phone : '') }}</span></td>
+<td style="width:40%"><div class="lbl">{{ kind == 'quote' ? 'QUOTATION' : 'INVOICE' }} DETAILS</div><span class="meta">Date<br></span><b>{{ d.doc_date }}</b><br><span class="meta">{% if kind=='quote' %}Valid until{% else %}Due date{% endif %}<br></span><b>{% if kind=='quote' %}{{ d.expiry_date }}{% else %}{{ d.due_date }}{% endif %}</b><br><span class="meta">Reference<br></span><b>{{ d.reference ?? '-' }}</b></td>
+</tr></table>
+<table class="items"><thead><tr><th style="width:28px" class="center">No</th><th>Description</th><th class="right">Qty</th><th class="center">Multiplier</th><th class="right">Unit price</th><th class="right" style="width:90px">Amount</th></tr></thead><tbody>
 {% set no = 0 %}
 {% for sec in d.sections %}
-<tr><td colspan="6" class="sec">{{ sec.title }}{% if sec.description %} — {{ sec.description }}{% endif %}</td></tr>
+<tr><td colspan="6" class="sec">{{ sec.title }}{% if sec.description %} <span class="sec-desc">— {{ sec.description }}</span>{% endif %}</td></tr>
 {% for l in sec.lines %}{% set no = no + 1 %}
-<tr><td>{{ no }}</td><td>{{ l.description }}{% if l.waived %}<br><b>{{ l.price_mode|upper }}</b>{% endif %}</td><td>{{ l.waived ? l.price_mode|capitalize : l.quantity|qty(l.unit_label) ~ ' ' ~ l.unit_label }}</td><td>{% if l.waived %}—{% elseif l.mult_enabled %}{{ l.mult_value|qty }} {{ l.mult_label }}{% else %}–{% endif %}</td><td>{{ l.waived ? '—' : l.unit_price|idr }}</td><td class="right">{{ l.line_amount|idr }}</td></tr>
+<tr><td class="center">{{ no }}</td><td>{{ l.description }}{% if l.waived %}<br><b>{{ l.price_mode|upper }}</b>{% endif %}</td><td class="right nowrap">{{ l.waived ? l.price_mode|capitalize : l.quantity|qty(l.unit_label) ~ ' ' ~ l.unit_label }}</td><td class="center nowrap">{% if l.waived %}—{% elseif l.mult_enabled %}{{ l.mult_value|qty }} {{ l.mult_label }}{% else %}–{% endif %}</td><td class="right nowrap">{{ l.waived ? '—' : l.unit_price|idr }}</td><td class="right nowrap">{{ l.line_amount|idr }}</td></tr>
 {% endfor %}
 {% endfor %}
 </tbody></table>
-<table class="totals" style="margin-top:10px"><tr><td>Subtotal</td><td class="right">{{ d.subtotal|idr }}</td></tr>
-<tr><td>Discount</td><td class="right">− {{ d.discount_amount|idr }}</td></tr>
-{% for t in d.tax_breakdown|json_decode %}<tr><td>Tax {{ t.rate }}%</td><td class="right">{{ t.tax|idr }}</td></tr>{% endfor %}
-<tr><td><b>Total</b></td><td class="right"><b>{{ d.total|idr }}</b></td></tr>
-<tr><td>Requested down payment{% if d.dp_due_date %} (due {{ d.dp_due_date }}){% endif %}</td><td class="right">{{ d.dp_amount|idr }}</td></tr>
-<tr><td>Remaining after requested DP</td><td class="right">{{ (d.total - d.dp_amount)|idr }}</td></tr>
-{% if kind == 'invoice' %}<tr><td>Down payments received</td><td class="right">{{ d.dp_paid|idr }}</td></tr><tr><td>Total payments received</td><td class="right">{{ d.paid|idr }}</td></tr><tr><td><b>Outstanding balance</b></td><td class="right"><b>{{ d.balance|idr }}</b></td></tr>{% endif %}
-</table>
-{% if d.banks|length %}<h3>Payment instructions</h3>{% for b in d.banks %}{% set s = b.snapshot|json_decode %}<p>{{ s.bank_name }}<br>Account: {{ s.account_number }} ({{ s.holder }}){% if s.branch %}<br>{{ s.branch }}{% endif %}{% if s.note %}<br>{{ s.note }}{% endif %}</p>{% endfor %}{% endif %}
-{% if d.notes %}<h3>Notes</h3><p>{{ d.notes }}</p>{% endif %}
-{% if d.terms %}<h3>Terms</h3><p>{{ d.terms }}</p>{% endif %}
-<p class="meta">Commercial {{ kind == 'quote' ? 'quotation' : 'invoice' }} — not a government tax invoice.</p>
+<div class="totals-wrap"><table class="totals"><tr><td>Subtotal</td><td>{{ d.subtotal|idr }}</td></tr>
+<tr><td>Discount</td><td>− {{ d.discount_amount|idr }}</td></tr>
+{% for t in d.tax_breakdown|json_decode %}<tr><td>Tax {{ t.rate }}%</td><td>{{ t.tax|idr }}</td></tr>{% endfor %}
+<tr class="grand"><td>Total</td><td>{{ d.total|idr }}</td></tr>
+<tr><td>Requested down payment{% if d.dp_due_date %} (due {{ d.dp_due_date }}){% endif %}</td><td>{{ d.dp_amount|idr }}</td></tr>
+<tr><td>Remaining after requested DP</td><td>{{ (d.total - d.dp_amount)|idr }}</td></tr>
+{% if kind == 'invoice' %}<tr><td>Down payments received</td><td>{{ d.dp_paid|idr }}</td></tr><tr><td>Total payments received</td><td>{{ d.paid|idr }}</td></tr><tr class="due"><td>Outstanding balance</td><td>{{ d.balance|idr }}</td></tr>{% endif %}
+</table></div>
+{% if d.banks|length %}<div class="box"><h3>PAYMENT INSTRUCTIONS</h3>{% for b in d.banks %}{% set s = b.snapshot|json_decode %}<p><b>{{ s.bank_name }}</b> — {{ s.account_number }} ({{ s.holder }}){% if s.branch %}<br><span class="meta">{{ s.branch }}</span>{% endif %}{% if s.note %}<br>{{ s.note }}{% endif %}</p>{% endfor %}</div>{% endif %}
+{% if d.notes %}<div class="box"><h3>NOTES</h3><p>{{ d.notes }}</p></div>{% endif %}
+{% if d.terms %}<div class="box"><h3>TERMS</h3><p>{{ d.terms }}</p></div>{% endif %}
+{% if kind == 'invoice' and d.show_signature %}
+<table class="sign"><tr><td></td><td class="sig">Hormat kami,<br><br><br><br><br><span class="sig-name">{{ director_name ?: '( . . . . . . . . . . . . . . . . . . . . )' }}</span><br>Direktur</td></tr></table>
+{% endif %}
+<div class="footer">Commercial {{ kind == 'quote' ? 'quotation' : 'invoice' }} — not a government tax invoice. {{ settings.company_name }}{% if d.number %} · {{ kind == 'quote' ? 'QT' : 'INV' }} {{ d.number }}{% endif %}</div>
 </body></html>

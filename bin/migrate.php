@@ -13,4 +13,14 @@ foreach ($stmts as $sql) {
     if ($sql === '') continue;
     $pdo->exec($sql);
 }
+// Idempotent schema catch-up for databases created before a column existed.
+try {
+    $has = $pdo->query("SHOW COLUMNS FROM invoices LIKE 'show_signature'")->fetch();
+    if (!$has) {
+        echo "Adding invoices.show_signature\n";
+        $pdo->exec('ALTER TABLE invoices ADD COLUMN show_signature TINYINT(1) NOT NULL DEFAULT 0');
+    }
+} catch (\Throwable $e) {
+    echo 'Schema check skipped: ' . $e->getMessage() . "\n";
+}
 echo "Done.\n";

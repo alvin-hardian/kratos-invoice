@@ -555,7 +555,7 @@ $app->get('/invoices/{id}/pdf', function ($req, $res, $a) use ($db, $twig) {
     $d = DocService::load($db, 'invoice', (int)$a['id']);
     if (!$d) return $res->withStatus(404);
     $settings = Repo::settings($db);
-    $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $d, 'kind' => 'invoice', 'settings' => $settings, 'logo_src' => \App\Support\Logo::dataUri(__DIR__ . '/../public', $settings['logo_path'] ?? null), 'font_dir' => realpath(__DIR__ . '/../public/fonts')], $twig);
+    $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $d, 'kind' => 'invoice', 'settings' => $settings, 'logo_src' => \App\Support\Logo::dataUri(__DIR__ . '/../public', $settings['logo_path'] ?? null), 'font_dir' => realpath(__DIR__ . '/../public/fonts'), 'director_name' => getenv('DIRECTOR_NAME') ?: ''], $twig);
     $dl = ($req->getQueryParams()['dl'] ?? '') === '1';
     return pdfResponse($res, $pdf, ($d['number'] ?? 'DRAFT') . '.pdf', $dl);
 });

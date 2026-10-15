@@ -58,6 +58,7 @@ final class DocService
             'dp_due_date' => ($post['dp_due_date'] ?? '') ?: null,
             'notes' => trim((string)($post['notes'] ?? '')),
             'terms' => trim((string)($post['terms'] ?? '')),
+            'show_signature' => !empty($post['show_signature']) ? 1 : 0,
             'bank_ids' => array_values(array_unique(array_map('intval', (array)($post['bank_ids'] ?? [])))),
             'sections' => $sections,
             'calc' => $calc,
@@ -74,6 +75,7 @@ final class DocService
         if ($p['dp_type'] === 'fixed') $p['dp_value'] = min($p['dp_value'], $p['calc']['total']);
         if ($p['dp_type'] !== 'none' && $p['calc']['total'] <= 0) throw new \RuntimeException('Down payment requires a positive total.');
         if ($p['dp_type'] !== 'none' && $p['calc']['dp_amount'] <= 0) throw new \RuntimeException('Down payment must be greater than zero.');
+        $sig = $kind === 'invoice' ? (int)($p['show_signature'] ?? 0) : null;
         $db->beginTransaction();
         try {
             if ($id) {
@@ -82,11 +84,21 @@ final class DocService
                 $row = $st->fetch();
                 if (!$row) throw new \RuntimeException('Document not found.');
                 if ($row['status'] !== 'draft') throw new \RuntimeException('Only drafts can be edited.');
-                $u = $db->prepare("UPDATE $t SET customer_id=?, doc_date=?, $dateCol=?, reference=?, subtotal=?, discount_type=?, discount_value=?, discount_amount=?, tax_total=?, tax_breakdown=?, total=?, dp_type=?, dp_value=?, dp_amount=?, dp_due_date=?, notes=?, terms=? WHERE id=?");
-                $u->execute([$p['customer_id'], $p['doc_date'], $dateVal, $p['reference'] ?: null, $p['calc']['subtotal'], $p['discount_type'], $p['discount_value'], $p['calc']['discount_amount'], $p['calc']['tax_total'], json_encode($p['calc']['tax_breakdown']), $p['calc']['total'], $p['dp_type'], $p['dp_value'], $p['calc']['dp_amount'], $p['dp_due_date'], $p['notes'] ?: null, $p['terms'] ?: null, $id]);
+                if ($kind === 'invoice') {
+                    $u = $db->prepare("UPDATE $t SET customer_id=?, doc_date=?, $dateCol=?, reference=?, subtotal=?, discount_type=?, discount_value=?, discount_amount=?, tax_total=?, tax_breakdown=?, total=?, dp_type=?, dp_value=?, dp_amount=?, dp_due_date=?, notes=?, terms=?, show_signature=? WHERE id=?");
+                    $u->execute([$p['customer_id'], $p['doc_date'], $dateVal, $p['reference'] ?: null, $p['calc']['subtotal'], $p['discount_type'], $p['discount_value'], $p['calc']['discount_amount'], $p['calc']['tax_total'], json_encode($p['calc']['tax_breakdown']), $p['calc']['total'], $p['dp_type'], $p['dp_value'], $p['calc']['dp_amount'], $p['dp_due_date'], $p['notes'] ?: null, $p['terms'] ?: null, $sig, $id]);
+                } else {
+                    $u = $db->prepare("UPDATE $t SET customer_id=?, doc_date=?, $dateCol=?, reference=?, subtotal=?, discount_type=?, discount_value=?, discount_amount=?, tax_total=?, tax_breakdown=?, total=?, dp_type=?, dp_value=?, dp_amount=?, dp_due_date=?, notes=?, terms=? WHERE id=?");
+                    $u->execute([$p['customer_id'], $p['doc_date'], $dateVal, $p['reference'] ?: null, $p['calc']['subtotal'], $p['discount_type'], $p['discount_value'], $p['calc']['discount_amount'], $p['calc']['tax_total'], json_encode($p['calc']['tax_breakdown']), $p['calc']['total'], $p['dp_type'], $p['dp_value'], $p['calc']['dp_amount'], $p['dp_due_date'], $p['notes'] ?: null, $p['terms'] ?: null, $id]);
+                }
             } else {
-                $u = $db->prepare("INSERT INTO $t (customer_id, doc_date, $dateCol, reference, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-                $u->execute([$p['customer_id'], $p['doc_date'], $dateVal, $p['reference'] ?: null, $p['calc']['subtotal'], $p['discount_type'], $p['discount_value'], $p['calc']['discount_amount'], $p['calc']['tax_total'], json_encode($p['calc']['tax_breakdown']), $p['calc']['total'], $p['dp_type'], $p['dp_value'], $p['calc']['dp_amount'], $p['dp_due_date'], $p['notes'] ?: null, $p['terms'] ?: null, $actor]);
+                if ($kind === 'invoice') {
+                    $u = $db->prepare("INSERT INTO $t (customer_id, doc_date, $dateCol, reference, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, show_signature, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                    $u->execute([$p['customer_id'], $p['doc_date'], $dateVal, $p['reference'] ?: null, $p['calc']['subtotal'], $p['discount_type'], $p['discount_value'], $p['calc']['discount_amount'], $p['calc']['tax_total'], json_encode($p['calc']['tax_breakdown']), $p['calc']['total'], $p['dp_type'], $p['dp_value'], $p['calc']['dp_amount'], $p['dp_due_date'], $p['notes'] ?: null, $p['terms'] ?: null, $sig, $actor]);
+                } else {
+                    $u = $db->prepare("INSERT INTO $t (customer_id, doc_date, $dateCol, reference, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                    $u->execute([$p['customer_id'], $p['doc_date'], $dateVal, $p['reference'] ?: null, $p['calc']['subtotal'], $p['discount_type'], $p['discount_value'], $p['calc']['discount_amount'], $p['calc']['tax_total'], json_encode($p['calc']['tax_breakdown']), $p['calc']['total'], $p['dp_type'], $p['dp_value'], $p['calc']['dp_amount'], $p['dp_due_date'], $p['notes'] ?: null, $p['terms'] ?: null, $actor]);
+                }
                 $id = (int)$db->lastInsertId();
             }
             self::replaceSections($db, $kind, $id, $p);
@@ -220,8 +232,8 @@ final class DocService
             $full = self::load($db, 'quote', $qid);
             $settings = Repo::settings($db);
             $due = date('Y-m-d', strtotime($full['doc_date'] . ' +' . (int)($settings['invoice_payment_days'] ?? 14) . ' days'));
-            $ins = $db->prepare('INSERT INTO invoices (customer_id, doc_date, due_date, reference, source_quotation_id, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-            $ins->execute([$full['customer_id'], $full['doc_date'], $due, $full['reference'], $qid, $full['subtotal'], $full['discount_type'], $full['discount_value'], $full['discount_amount'], $full['tax_total'], $full['tax_breakdown'], $full['total'], $full['dp_type'], $full['dp_value'], $full['dp_amount'], $full['dp_due_date'], $full['notes'], $full['terms'], $actor]);
+            $ins = $db->prepare('INSERT INTO invoices (customer_id, doc_date, due_date, reference, source_quotation_id, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, show_signature, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+            $ins->execute([$full['customer_id'], $full['doc_date'], $due, $full['reference'], $qid, $full['subtotal'], $full['discount_type'], $full['discount_value'], $full['discount_amount'], $full['tax_total'], $full['tax_breakdown'], $full['total'], $full['dp_type'], $full['dp_value'], $full['dp_amount'], $full['dp_due_date'], $full['notes'], $full['terms'], 0, $actor]);
             $iid = (int)$db->lastInsertId();
             foreach ($full['sections'] as $si => $sec) {
                 $db->prepare('INSERT INTO invoice_sections (invoice_id, title, description, sort_order) VALUES (?,?,?,?)')->execute([$iid, $sec['title'], $sec['description'], $si]);

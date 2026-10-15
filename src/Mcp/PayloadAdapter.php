@@ -17,7 +17,7 @@ final class PayloadAdapter
         $post = [];
         foreach (['customer_id', 'doc_date', 'expiry_date', 'due_date', 'reference',
             'discount_type', 'discount_value', 'dp_type', 'dp_value', 'dp_due_date',
-            'notes', 'terms', 'bank_ids', 'sections'] as $k) {
+            'notes', 'terms', 'show_signature', 'bank_ids', 'sections'] as $k) {
             if (array_key_exists($k, $args)) $post[$k] = $args[$k];
         }
         $post['discount_type'] = $post['discount_type'] ?? 'none';

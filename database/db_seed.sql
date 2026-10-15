@@ -191,6 +191,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   dp_due_date DATE NULL,
   notes TEXT NULL,
   terms TEXT NULL,
+  show_signature TINYINT(1) NOT NULL DEFAULT 0,
   cancel_reason VARCHAR(255) NULL,
   created_by INT UNSIGNED NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

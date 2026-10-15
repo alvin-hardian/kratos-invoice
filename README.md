@@ -38,7 +38,7 @@ Open http://127.0.0.1:8099/login
   </Directory>
 </VirtualHost>
 ```
-- Set `APP_ENV=prod`, `APP_DEBUG=0` in `.env`; ensure `public/uploads` writable; store fonts in `public/fonts` (Inter + Oswald included).
+- Set `APP_ENV=prod`, `APP_DEBUG=0` in `.env`; ensure `public/uploads` writable; display type uses Inter (see `public/fonts`).
 
 ## Key workflows
 - Quotations: new → save draft (sections required, every line in a section) → issue (QT-2608001) → accept/reject/cancel → convert (one invoice per quotation, duplicate-safe) → invoice draft → issue (INV-2608001).
