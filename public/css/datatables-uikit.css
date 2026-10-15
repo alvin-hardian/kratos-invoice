@@ -3,27 +3,27 @@
 .dt-container .dt-layout-row { margin: 0 0 10px 0; }
 table.dataTable thead th {
   font-family: 'Inter', system-ui, sans-serif; font-weight: 600;
-  color: #1e3a8a; background: #eef4ff;
+  color: #4c1d95; background: #f6f1fe;
   white-space: nowrap;
 }
 table.dataTable thead th.dt-orderable-asc:hover,
-table.dataTable thead th.dt-orderable-desc:hover { background: #dce7fd; }
+table.dataTable thead th.dt-orderable-desc:hover { background: #e9dcfc; }
 table.dataTable tbody td { background: #fff; }
 table.dataTable.stripe tbody tr:nth-child(even) td { background: #f8fafc; }
-table.dataTable tbody tr:hover td { background: #eef4ff; }
+table.dataTable tbody tr:hover td { background: #f6f1fe; }
 .dt-container .dt-search input,
 .dt-container .dt-input {
   border-radius: 0.5rem; border: 1px solid #cbd5e1;
   padding: 0.5rem 0.75rem; font-size: 0.875rem; background: #fff; color: #0f172a;
 }
-.dt-container .dt-search input:focus { outline: 2px solid #2456d6; border-color: #2456d6; }
+.dt-container .dt-search input:focus { outline: 2px solid #7a24d6; border-color: #7a24d6; }
 .dt-container .dt-paging .dt-paging-button {
   border-radius: 0.5rem; border: 1px solid #cbd5e1; background: #fff;
   color: #0f172a; padding: 0.25rem 0.625rem; margin-left: 4px;
 }
 .dt-container .dt-paging .dt-paging-button.current,
 .dt-container .dt-paging .dt-paging-button.current:hover {
-  background: #1e40af; color: #fff; border-color: #1e40af;
+  background: #641bb0; color: #fff; border-color: #641bb0;
 }
 .dt-container .dt-paging .dt-paging-button:hover { background: #f8fafc; }
 .dt-container .dt-paging .dt-paging-button.disabled { opacity: 0.45; cursor: default; }
