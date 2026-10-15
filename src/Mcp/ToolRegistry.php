@@ -106,6 +106,8 @@ final class ToolRegistry
             ['name' => 'list_invoices', 'description' => 'Search invoices with paid/balance.', 'inputSchema' => ['type' => 'object', 'properties' => ['s' => ['type' => 'string'], 'status' => ['type' => 'string'], 'limit' => ['type' => 'integer', 'default' => 50]]]],
             ['name' => 'get_invoice', 'description' => 'Full invoice: sections, lines, banks, payments, balance, audit log.', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer']]]],
             ['name' => 'get_summary', 'description' => 'Period aggregates (issued/paid/outstanding/overdue/DP) + invoice rows.', 'inputSchema' => ['type' => 'object', 'properties' => ['from' => ['type' => 'string'], 'to' => ['type' => 'string'], 'customer_id' => ['type' => 'integer'], 's' => ['type' => 'string'], 'limit' => ['type' => 'integer', 'default' => 100]]]],
+            ['name' => 'get_invoice_pdf', 'description' => 'Render an invoice as PDF (same document as the web Preview PDF). Returns filename, size and base64 content.', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer', 'description' => 'Invoice id']]]],
+            ['name' => 'get_quotation_pdf', 'description' => 'Render a quotation as PDF (same document as the web Preview PDF). Returns filename, size and base64 content.', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer', 'description' => 'Quotation id']]]],
             ['name' => 'preview_calculation', 'description' => 'Authoritative totals preview for flat lines (same policy as backend).', 'inputSchema' => ['type' => 'object', 'required' => ['lines'], 'properties' => ['lines' => ['type' => 'array', 'items' => $line], 'discount_type' => ['type' => 'string', 'default' => 'none'], 'discount_value' => ['type' => ['number', 'string'], 'default' => 0], 'dp_type' => ['type' => 'string', 'default' => 'none'], 'dp_value' => ['type' => ['number', 'string'], 'default' => 0]]]],
             ['name' => 'create_customer', 'description' => 'Create a customer.', 'inputSchema' => ['type' => 'object', 'required' => ['name'], 'properties' => ['name' => ['type' => 'string'], 'contact_person' => ['type' => 'string'], 'email' => ['type' => 'string'], 'phone' => ['type' => 'string'], 'billing_address' => ['type' => 'string'], 'tax_id' => ['type' => 'string']]]],
             ['name' => 'update_customer', 'description' => 'Update a customer (partial fields merged).', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'contact_person' => ['type' => 'string'], 'email' => ['type' => 'string'], 'phone' => ['type' => 'string'], 'billing_address' => ['type' => 'string'], 'tax_id' => ['type' => 'string'], 'archived' => ['type' => 'integer']]]],
@@ -116,7 +118,7 @@ final class ToolRegistry
             ['name' => 'duplicate_quotation', 'description' => 'Duplicate a quotation as a new draft.', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer']]]],
             ['name' => 'convert_quotation_to_invoice', 'description' => 'Convert accepted quotation to invoice draft (duplicate-safe).', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer', 'description' => 'Quotation id']]]],
             ['name' => 'create_invoice_draft', 'description' => 'Create invoice draft directly (without quotation).', 'inputSchema' => ['type' => 'object', 'required' => ['customer_id', 'doc_date', 'sections'], 'properties' => array_merge(self::docProps('due_date'), ['show_signature' => ['type' => 'boolean', 'description' => 'Show signature placeholder on the invoice PDF (director name comes from server .env)']])]],
-            ['name' => 'update_invoice_draft', 'description' => 'Update a draft invoice (drafts only).', 'inputSchema' => ['type' => 'object', 'required' => ['id', 'customer_id', 'doc_date', 'sections'], 'properties' => array_merge(['id' => ['type' => 'integer']], self::docProps('due_date'), ['show_signature' => ['type' => 'boolean', 'description' => 'Show signature placeholder on the invoice PDF (director name comes from server .env)']])]],
+            ['name' => 'update_invoice_draft', 'description' => 'Update a draft invoice, or an issued invoice with no recorded payments.', 'inputSchema' => ['type' => 'object', 'required' => ['id', 'customer_id', 'doc_date', 'sections'], 'properties' => array_merge(['id' => ['type' => 'integer']], self::docProps('due_date'), ['show_signature' => ['type' => 'boolean', 'description' => 'Show signature placeholder on the invoice PDF (director name comes from server .env)']])]],
             ['name' => 'issue_invoice', 'description' => 'Issue a draft invoice (assigns number INV-YYMMNNN).', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer']]]],
             ['name' => 'cancel_invoice', 'description' => 'Cancel an issued invoice (blocked with active payments).', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer'], 'reason' => ['type' => 'string']]]],
             ['name' => 'record_payment', 'description' => 'Record a manual payment (dp/balance/other) with overpay + DP-cap protection.', 'inputSchema' => ['type' => 'object', 'required' => ['invoice_id', 'amount'], 'properties' => ['invoice_id' => ['type' => 'integer'], 'amount' => ['type' => ['integer', 'string'], 'description' => 'Whole IDR'], 'pay_date' => ['type' => 'string'], 'method' => ['type' => 'string', 'default' => 'Transfer'], 'purpose' => ['type' => 'string', 'enum' => ['dp', 'balance', 'other'], 'default' => 'balance'], 'reference' => ['type' => 'string'], 'note' => ['type' => 'string']]]],
@@ -139,6 +141,8 @@ final class ToolRegistry
             'list_invoices' => self::listInvoices($db, $args),
             'get_invoice' => self::getDoc($db, 'invoice', (int)($args['id'] ?? 0)),
             'get_summary' => self::summary($db, $args),
+            'get_invoice_pdf' => self::docPdf($db, 'invoice', (int)($args['id'] ?? 0)),
+            'get_quotation_pdf' => self::docPdf($db, 'quote', (int)($args['id'] ?? 0)),
             'preview_calculation' => self::preview($db, $args),
             'create_customer' => self::createCustomer($db, $args),
             'update_customer' => self::updateCustomer($db, $args),
@@ -269,6 +273,37 @@ final class ToolRegistry
         $d = self::cleanDoc($d);
         $d['audit_log'] = $logs->fetchAll();
         return $d;
+    }
+
+    /** Render a quotation/invoice PDF (same document as the web Preview PDF). */
+    private static function docPdf(PDO $db, string $kind, int $id): array
+    {
+        if ($id <= 0) throw new RuntimeException('id is required.');
+        $d = DocService::load($db, $kind, $id);
+        if (!$d) throw new RuntimeException('Not found.');
+        $settings = Repo::settings($db);
+        $root = dirname(__DIR__, 2);
+        $twig = \App\Support\TwigFactory::create($root . '/templates');
+        $fallback = [];
+        $director = '';
+        if ($kind === 'invoice') {
+            $fb = $db->query('SELECT bank_name, account_number, holder, branch, note FROM bank_accounts WHERE active=1 AND is_default_doc=1 ORDER BY id')->fetchAll();
+            $fallback = array_map(fn($r) => ['snapshot' => json_encode($r, JSON_UNESCAPED_UNICODE)], $fb);
+            $director = \App\Support\DB::env('DIRECTOR_NAME');
+        }
+        $html = $twig->render('pdf/doc.twig', [
+            'd' => $d, 'kind' => $kind, 'settings' => $settings,
+            'logo_src' => \App\Support\Logo::dataUri($root . '/public', $settings['logo_path'] ?? null),
+            'font_dir' => realpath($root . '/public/fonts'),
+            'director_name' => $director, 'fallback_banks' => $fallback,
+        ]);
+        $pdf = \App\Services\PdfService::fromHtml($html);
+        $name = ($d['number'] ?? 'DRAFT') . '.pdf';
+        return [
+            'kind' => $kind, 'id' => $id, 'number' => $d['number'] ?? 'DRAFT',
+            'filename' => $name, 'mime' => 'application/pdf',
+            'size_bytes' => strlen($pdf), 'base64' => base64_encode($pdf),
+        ];
     }
 
     private static function summary(PDO $db, array $args): array

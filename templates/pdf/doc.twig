@@ -80,7 +80,7 @@ tr { page-break-inside: avoid; }
 {% if d.notes %}<div class="box"><h3>NOTES</h3><p>{{ d.notes }}</p></div>{% endif %}
 {% if d.terms %}<div class="box"><h3>TERMS</h3><p>{{ d.terms }}</p></div>{% endif %}
 {% if kind == 'invoice' and d.show_signature %}
-<table class="sign"><tr><td></td><td class="sig">Hormat kami,<br><br><br><br><br><span class="sig-name">{{ director_name ?: '( . . . . . . . . . . . . . . . . . . . . )' }}</span><br>Direktur</td></tr></table>
+<table class="sign"><tr><td class="sig">Hormat kami,<br><br><br><br><br><span class="sig-name">{{ director_name ?: '( . . . . . . . . . . . . . . . . . . . . )' }}</span><br>Direktur</td><td></td></tr></table>
 {% endif %}
 <div class="footer">Commercial {{ kind == 'quote' ? 'quotation' : 'invoice' }} — not a government tax invoice. {{ settings.company_name }}{% if d.number %} · {{ kind == 'quote' ? 'QT' : 'INV' }} {{ d.number }}{% endif %}</div>
 </body></html>

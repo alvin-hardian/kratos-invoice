@@ -8,7 +8,11 @@ final class PdfService
 {
     public static function render(string $tpl, array $data, Twig $twig): string
     {
-        $html = $twig->fetch($tpl, $data);
+        return self::fromHtml($twig->fetch($tpl, $data));
+    }
+
+    public static function fromHtml(string $html): string
+    {
         $opt = new \Dompdf\Options();
         $opt->set('isRemoteEnabled', false);
         $opt->set('defaultFont', 'Inter');

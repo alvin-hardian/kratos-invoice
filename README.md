@@ -52,8 +52,8 @@ Line = waived ? 0 : round(qty × [mult ×] price) → subtotal → discount pre-
 ## MCP (Model Context Protocol, Streamable HTTP)
 
 Exposes the app to AI agents over `POST /mcp` (JSON-RPC 2.0, native PHP, no extra runtime).
-25 tools reusing the same `DocService`/`Calculator` validation, transactions and totals as the web UI:
-reads (`dashboard_stats`, `list/get_*`, `get_summary`, `preview_calculation`) + writes
+27 tools reusing the same `DocService`/`Calculator` validation, transactions and totals as the web UI:
+reads (`dashboard_stats`, `list/get_*`, `get_summary`, `preview_calculation`, `get_invoice_pdf`, `get_quotation_pdf`) + writes
 (`create/update_customer`, `create/update/issue/duplicate/convert` quotations & invoices,
 `set_quotation_status`, `cancel_invoice`, `record/void_payment`).
 

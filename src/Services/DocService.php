@@ -23,6 +23,14 @@ final class DocService
         return $cache[$key];
     }
 
+    /** Whether the invoice has any non-voided payments recorded. */
+    public static function hasActivePayments(PDO $db, int $invoiceId): bool
+    {
+        $st = $db->prepare('SELECT COUNT(*) c FROM payments WHERE invoice_id=? AND voided_at IS NULL');
+        $st->execute([$invoiceId]);
+        return ((int)$st->fetch()['c']) > 0;
+    }
+
     public static function normalizePayload(array $post, PDO $db): array
     {
         $taxMap = Repo::taxMap($db);
@@ -98,7 +106,12 @@ final class DocService
                 $st->execute([$id]);
                 $row = $st->fetch();
                 if (!$row) throw new \RuntimeException('Document not found.');
-                if ($row['status'] !== 'draft') throw new \RuntimeException('Only drafts can be edited.');
+                if ($row['status'] !== 'draft') {
+                    // Issued invoices stay editable until money moves.
+                    if (!($kind === 'invoice' && $row['status'] === 'issued' && !self::hasActivePayments($db, $id))) {
+                        throw new \RuntimeException($row['status'] === 'issued' ? 'Cannot edit: payments already recorded.' : 'Only drafts can be edited.');
+                    }
+                }
                 if ($kind === 'invoice' && self::invoiceHasSignature($db)) {
                     $u = $db->prepare("UPDATE $t SET customer_id=?, doc_date=?, $dateCol=?, reference=?, subtotal=?, discount_type=?, discount_value=?, discount_amount=?, tax_total=?, tax_breakdown=?, total=?, dp_type=?, dp_value=?, dp_amount=?, dp_due_date=?, notes=?, terms=?, show_signature=? WHERE id=?");
                     $u->execute([$p['customer_id'], $p['doc_date'], $dateVal, $p['reference'] ?: null, $p['calc']['subtotal'], $p['discount_type'], $p['discount_value'], $p['calc']['discount_amount'], $p['calc']['tax_total'], json_encode($p['calc']['tax_breakdown']), $p['calc']['total'], $p['dp_type'], $p['dp_value'], $p['calc']['dp_amount'], $p['dp_due_date'], $p['notes'] ?: null, $p['terms'] ?: null, $sig, $id]);

@@ -25,10 +25,7 @@ $app->addRoutingMiddleware();
 $app->addErrorMiddleware((bool)(getenv('APP_DEBUG') ?: true), true, true);
 
 $db = DB::pdo();
-$twig->getEnvironment()->addFilter(new \Twig\TwigFilter('idr', fn($n) => Format::idr((int)$n)));
-$twig->getEnvironment()->addFilter(new \Twig\TwigFilter('d', fn($v) => Format::escDate($v)));
-$twig->getEnvironment()->addFilter(new \Twig\TwigFilter('qty', fn($v, $unit = null) => Format::qty($v, $unit)));
-$twig->getEnvironment()->addFilter(new \Twig\TwigFilter('json_decode', fn($v) => json_decode((string)$v, true)));
+\App\Support\TwigFactory::register($twig->getEnvironment());
 $twig->getEnvironment()->addFunction(new \Twig\TwigFunction('csrf', fn() => '<input type="hidden" name="csrf" value="' . htmlspecialchars($_SESSION['csrf'] ?? '', ENT_QUOTES, 'UTF-8') . '">', ['is_safe' => ['html']]));
 $twig->getEnvironment()->addFunction(new \Twig\TwigFunction('asset', function (string $p) {
     $file = __DIR__ . '/../public/' . ltrim($p, '/');
@@ -345,7 +342,8 @@ $app->get('/invoices/{id}', function ($req, $res, $a) use ($db, $twig) {
 });
 $app->get('/invoices/{id}/edit', function ($req, $res, $a) use ($db, $twig) {
     $d = DocService::load($db, 'invoice', (int)$a['id']);
-    if (!$d || $d['status'] !== 'draft') { flash('Only drafts editable.', 'danger'); return $res->withHeader('Location', '/invoices/' . $a['id'])->withStatus(302); }
+    $editable = $d && ($d['status'] === 'draft' || ($d['status'] === 'issued' && !$d['paid']));
+    if (!$editable) { flash('Only drafts and unpaid issued invoices can be edited.', 'danger'); return $res->withHeader('Location', '/invoices/' . $a['id'])->withStatus(302); }
     return $twig->render($res, 'editor.twig', editorData($db, 'invoice', $d));
 });
 $app->post('/invoices/{id}', function ($req, $res, $a) use ($db) {
