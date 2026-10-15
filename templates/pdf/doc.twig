@@ -74,7 +74,9 @@ tr { page-break-inside: avoid; }
 <tr><td>Remaining after requested DP</td><td>{{ (d.total - d.dp_amount)|idr }}</td></tr>
 {% if kind == 'invoice' %}<tr><td>Down payments received</td><td>{{ d.dp_paid|idr }}</td></tr><tr><td>Total payments received</td><td>{{ d.paid|idr }}</td></tr><tr class="due"><td>Outstanding balance</td><td>{{ d.balance|idr }}</td></tr>{% endif %}
 </table></div>
-{% if d.banks|length %}<div class="box"><h3>PAYMENT INSTRUCTIONS</h3>{% for b in d.banks %}{% set s = b.snapshot|json_decode %}<p><b>{{ s.bank_name }}</b> — {{ s.account_number }} ({{ s.holder }}){% if s.branch %}<br><span class="meta">{{ s.branch }}</span>{% endif %}{% if s.note %}<br>{{ s.note }}{% endif %}</p>{% endfor %}</div>{% endif %}
+{% set pay_banks = d.banks|length ? d.banks : (kind == 'invoice' ? fallback_banks : []) %}
+{% if pay_banks|length %}<div class="box"><h3>PAYMENT INSTRUCTIONS</h3>{% for b in pay_banks %}{% set s = b.snapshot|json_decode %}<p><b>{{ s.bank_name }}</b> — {{ s.account_number }} ({{ s.holder }}){% if s.branch %}<br><span class="meta">{{ s.branch }}</span>{% endif %}{% if s.note %}<br>{{ s.note }}{% endif %}</p>{% endfor %}</div>
+{% elseif kind == 'invoice' %}<div class="box"><h3>PAYMENT INSTRUCTIONS</h3><p class="meta">Bank details will follow on request — please contact {{ settings.company_name }}.</p></div>{% endif %}
 {% if d.notes %}<div class="box"><h3>NOTES</h3><p>{{ d.notes }}</p></div>{% endif %}
 {% if d.terms %}<div class="box"><h3>TERMS</h3><p>{{ d.terms }}</p></div>{% endif %}
 {% if kind == 'invoice' and d.show_signature %}

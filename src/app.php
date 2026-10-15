@@ -547,7 +547,7 @@ $app->get('/quotations/{id}/pdf', function ($req, $res, $a) use ($db, $twig) {
     $d = DocService::load($db, 'quote', (int)$a['id']);
     if (!$d) return $res->withStatus(404);
     $settings = Repo::settings($db);
-    $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $d, 'kind' => 'quote', 'settings' => $settings, 'logo_src' => \App\Support\Logo::dataUri(__DIR__ . '/../public', $settings['logo_path'] ?? null), 'font_dir' => realpath(__DIR__ . '/../public/fonts')], $twig);
+    $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $d, 'kind' => 'quote', 'settings' => $settings, 'logo_src' => \App\Support\Logo::dataUri(__DIR__ . '/../public', $settings['logo_path'] ?? null), 'font_dir' => realpath(__DIR__ . '/../public/fonts'), 'fallback_banks' => []], $twig);
     $dl = ($req->getQueryParams()['dl'] ?? '') === '1';
     return pdfResponse($res, $pdf, ($d['number'] ?? 'DRAFT') . '.pdf', $dl);
 });
@@ -555,7 +555,11 @@ $app->get('/invoices/{id}/pdf', function ($req, $res, $a) use ($db, $twig) {
     $d = DocService::load($db, 'invoice', (int)$a['id']);
     if (!$d) return $res->withStatus(404);
     $settings = Repo::settings($db);
-    $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $d, 'kind' => 'invoice', 'settings' => $settings, 'logo_src' => \App\Support\Logo::dataUri(__DIR__ . '/../public', $settings['logo_path'] ?? null), 'font_dir' => realpath(__DIR__ . '/../public/fonts'), 'director_name' => getenv('DIRECTOR_NAME') ?: ''], $twig);
+    // Invoices must always carry payment instructions: attached banks first,
+    // otherwise the company's default bank account(s).
+    $fb = $db->query('SELECT bank_name, account_number, holder, branch, note FROM bank_accounts WHERE active=1 AND is_default_doc=1 ORDER BY id')->fetchAll();
+    $fallback = array_map(fn($r) => ['snapshot' => json_encode($r, JSON_UNESCAPED_UNICODE)], $fb);
+    $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $d, 'kind' => 'invoice', 'settings' => $settings, 'logo_src' => \App\Support\Logo::dataUri(__DIR__ . '/../public', $settings['logo_path'] ?? null), 'font_dir' => realpath(__DIR__ . '/../public/fonts'), 'director_name' => getenv('DIRECTOR_NAME') ?: '', 'fallback_banks' => $fallback], $twig);
     $dl = ($req->getQueryParams()['dl'] ?? '') === '1';
     return pdfResponse($res, $pdf, ($d['number'] ?? 'DRAFT') . '.pdf', $dl);
 });
