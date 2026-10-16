@@ -27,8 +27,10 @@ final class Format
     {
         if ($v === null || $v === '') return 0;
         $s = trim((string) $v);
-        // allow "1,5" as 1.5
-        if (preg_match('/^\d{1,3}(\.\d{3})+(,\d+)?$/', $s)) {
+        // allow "1,5" as 1.5. Dots count as Indonesian thousands only with 2+
+        // groups ("1.500.000"); a single group ("1.000") is a plain decimal,
+        // which is also the DECIMAL(10,3) format this value round-trips in.
+        if (preg_match('/^\d{1,3}(\.\d{3}){2,}(,\d+)?$/', $s)) {
             $s = str_replace('.', '', $s);
         }
         $s = str_replace(',', '.', $s);

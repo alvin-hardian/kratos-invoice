@@ -182,7 +182,9 @@ document.getElementById('doc-form').onsubmit=function(ev){
   E.sections.forEach((sec,si)=>{
     [['title',sec.title],['description',sec.description||'']].forEach(([f,v])=>{ const h=document.createElement('input'); h.type='hidden'; h.name=`sections[${si}][${f}]`; h.value=v; this.appendChild(h); });
     sec.lines.forEach((l,li)=>{
-      const vals={description:l.description,quantity:l.quantity,unit_label:l.unit_label,unit_price:l.unit_price,mult_enabled:l.mult_enabled?1:'',mult_label:l.mult_label||'',mult_value:l.mult_value??'',tax_rate_id:l.tax_rate_id||'',waived:l.waived?1:'',price_mode:l.price_mode||'normal',product_id:l.product_id||''};
+      // Send canonical decimals (JS parseQty: dot = decimal point). Without
+      // this, DB-format strings like "1.000" round-trip back ambiguously.
+      const vals={description:l.description,quantity:String(parseQty(l.quantity)),unit_label:l.unit_label,unit_price:l.unit_price,mult_enabled:l.mult_enabled?1:'',mult_label:l.mult_label||'',mult_value:l.mult_value==null||l.mult_value===''?'':String(parseQty(l.mult_value)),tax_rate_id:l.tax_rate_id||'',waived:l.waived?1:'',price_mode:l.price_mode||'normal',product_id:l.product_id||''};
       Object.entries(vals).forEach(([f,v])=>{ const h=document.createElement('input'); h.type='hidden'; h.name=`sections[${si}][lines][${li}][${f}]`; h.value=v??''; this.appendChild(h); });
     });
   });
