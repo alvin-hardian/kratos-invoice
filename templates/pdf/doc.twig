@@ -19,6 +19,7 @@ table { width: 100%; border-collapse: collapse; }
 .items td { border: 1px solid #e2d4f7; padding: 6px 8px; vertical-align: top; }
 .sec { background: #ede4fc; font-weight: bold; color: #4c1d95; }
 .sec-desc { font-weight: normal; color: #475569; }
+.item-sub { font-size: 9px; color: #64748b; padding-left: 10px; }
 thead { display: table-header-group; }
 tr { page-break-inside: avoid; }
 .right { text-align: right; }
@@ -61,8 +62,8 @@ tr { page-break-inside: avoid; }
 {% set no = 0 %}
 {% for sec in d.sections %}
 <tr><td colspan="6" class="sec">{{ sec.title }}{% if sec.description %} <span class="sec-desc">— {{ sec.description }}</span>{% endif %}</td></tr>
-{% for l in sec.lines %}{% set no = no + 1 %}
-<tr><td class="center">{{ no }}</td><td>{{ l.description }}{% if l.waived %}<br><b>{{ l.price_mode|upper }}</b>{% endif %}</td><td class="right nowrap">{{ l.waived ? l.price_mode|capitalize : l.quantity|qty(l.unit_label) ~ ' ' ~ l.unit_label }}</td><td class="center nowrap">{% if l.waived %}—{% elseif l.mult_enabled %}{{ l.mult_value|qty }} {{ l.mult_label }}{% else %}–{% endif %}</td><td class="right nowrap">{{ l.waived ? '—' : l.unit_price|idr }}</td><td class="right nowrap">{{ l.line_amount|idr }}</td></tr>
+{% for l in sec.lines %}{% set no = no + 1 %}{% set title = l.product_name ?? l.description %}
+<tr><td class="center">{{ no }}</td><td>{{ title }}{% if l.product_name and l.description and l.description != l.product_name %}<br><span class="item-sub">{{ l.description }}</span>{% endif %}{% if l.waived %}<br><b>{{ l.price_mode|upper }}</b>{% endif %}</td><td class="right nowrap">{{ l.waived ? l.price_mode|capitalize : l.quantity|qty(l.unit_label) ~ ' ' ~ l.unit_label }}</td><td class="center nowrap">{% if l.waived %}—{% elseif l.mult_enabled %}{{ l.mult_value|qty }} {{ l.mult_label }}{% else %}–{% endif %}</td><td class="right nowrap">{{ l.waived ? '—' : l.unit_price|idr }}</td><td class="right nowrap">{{ l.line_amount|idr }}</td></tr>
 {% endfor %}
 {% endfor %}
 </tbody></table>
