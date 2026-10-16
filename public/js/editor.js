@@ -43,6 +43,10 @@ function applyProduct(si, li, p) {
   if (card) {
     const set = (f, v) => { const el = card.querySelector(`[data-f="${f}"]`); if (el) el.value = v ?? ''; };
     set('description', line.description);
+    const sc = card.querySelector('[data-f="show_desc"]');
+    if (sc) sc.checked = !!(line.description || line.show_desc);
+    const dctl = card.querySelector('.desc-ctl');
+    if (dctl) dctl.style.display = (line.description || line.show_desc) ? '' : 'none';
     set('unit_label', line.unit_label);
     set('unit_price', line.unit_price);
     const tax = card.querySelector('[data-f="tax_rate_id"]');
@@ -76,7 +80,7 @@ function initProductPicks(scope) {
           return '<div class="text-xs text-slate-500">No items found — press Enter to add "' + escape(d.input) + '" as a new item.</div>';
         },
         option_create: function (d, escape) {
-          return '<div>+ Add <b>' + escape(d.input) + '</b> as new item…</div>';
+          return '<div class="create">+ Add <b>' + escape(d.input) + '</b> as new item…</div>';
         }
       },
       load: function (q, cb) {
@@ -106,10 +110,11 @@ function initProductPicks(scope) {
           .then(r => r.json().then(j => ({ok: r.ok, j})))
           .then(({ok, j}) => {
             if (!ok || !j || j.error || !j.id) throw new Error((j && j.error) || 'Save failed');
-            const row = {id: j.id, name: j.name, description: j.description || '', unit_label: j.unit_label, unit_price: j.unit_price, price_text: fmtIDR(j.unit_price), mult_enabled_default: j.mult_enabled_default, mult_label: j.mult_label, mult_value: j.mult_value, tax_rate_id: j.tax_rate_id, tax_rate_val: j.tax_rate_val, _known: true};
-            picker.removeOption(value);
-            picker.addOption(row);
-            picker.setValue(String(row.id), true);
+            // Swap the temp option for the real row in place: updateOption
+            // re-keys the option AND re-renders the already-selected item, so
+            // the name never blanks out mid-flight.
+            const row = {id: String(j.id), name: j.name, description: j.description || '', unit_label: j.unit_label, unit_price: j.unit_price, price_text: fmtIDR(j.unit_price), mult_enabled_default: j.mult_enabled_default, mult_label: j.mult_label, mult_value: j.mult_value, tax_rate_id: j.tax_rate_id, tax_rate_val: j.tax_rate_val, _known: true};
+            picker.updateOption(value, row);
             applyProduct(si, li, row);
             toast('Item saved to products.');
           })
@@ -136,7 +141,8 @@ function render(){
       c.innerHTML=`
       <div class="mb-2"><select class="prod-pick field" data-s="${si}" data-l="${li}" placeholder="Type to search products, or describe a custom line below…"></select></div>
       <div class="grid grid-cols-2 md:grid-cols-12 gap-2">
-        <div class="col-span-2 md:col-span-12"><textarea class="field" rows="2" data-s="${si}" data-l="${li}" data-f="description" placeholder="Description *">${esc(l.description)}</textarea></div>
+        <div class="col-span-2 md:col-span-12"><label class="flex items-center gap-2 text-xs font-medium text-slate-600"><input type="checkbox" class="h-4 w-4 accent-brand-600" data-s="${si}" data-l="${li}" data-f="show_desc" ${l.description||l.show_desc?'checked':''}> Description</label>
+        <span class="desc-ctl mt-1 block" style="${l.description||l.show_desc?'':'display:none'}"><textarea class="field" rows="2" data-s="${si}" data-l="${li}" data-f="description" placeholder="Description *">${esc(l.description)}</textarea></span></div>
         <div class="md:col-span-2"><label class="text-xs font-medium text-slate-600">Qty<input class="field mt-0.5" data-s="${si}" data-l="${li}" data-f="quantity" value="${esc(fmtQty(l.quantity ?? 1, l.unit_label))}"></label></div>
         <div class="md:col-span-2"><label class="text-xs font-medium text-slate-600">Unit<input class="field mt-0.5" data-s="${si}" data-l="${li}" data-f="unit_label" value="${esc(l.unit_label||'pcs')}" list="units"></label></div>
         <div class="md:col-span-3"><label class="text-xs font-medium text-slate-600">Unit price (IDR)<input class="field mt-0.5" data-s="${si}" data-l="${li}" data-f="unit_price" value="${esc(l.unit_price??0)}"></label></div>
@@ -169,7 +175,7 @@ function bind(){
           // show/hide the dependent controls inline instead of re-rendering
           const card=el.closest('.rounded-lg');
           if(card){
-            const ctl=card.querySelector(f==='mult_enabled' ? '.mult-ctl' : '.waive-ctl');
+            const ctl=card.querySelector(f==='mult_enabled' ? '.mult-ctl' : (f==='show_desc' ? '.desc-ctl' : '.waive-ctl'));
             if(ctl) ctl.style.display=el.checked?'':'none';
           }
         }
