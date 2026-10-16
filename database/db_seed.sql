@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS document_counters (
 CREATE TABLE IF NOT EXISTS quotations (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   number VARCHAR(40) NULL UNIQUE,
-  status ENUM('draft','issued','accepted','rejected','cancelled') NOT NULL DEFAULT 'draft',
+  status ENUM('draft','issued','accepted','cancelled') NOT NULL DEFAULT 'draft',
   customer_id INT UNSIGNED NULL,
   customer_snapshot JSON NULL,
   company_snapshot JSON NULL,

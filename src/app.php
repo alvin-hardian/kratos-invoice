@@ -266,12 +266,12 @@ $app->post('/quotations/{id}/status', function ($req, $res, $a) use ($db) {
     $p = (array)$req->getParsedBody();
     if (!check_csrf($p)) return $res->withHeader('Location', '/quotations/' . $a['id'])->withStatus(302);
     $to = $p['to'] ?? '';
-    if (!in_array($to, ['accepted','rejected','cancelled'], true)) { flash('Invalid status.', 'danger'); return $res->withHeader('Location', '/quotations/' . $a['id'])->withStatus(302); }
+    if (!in_array($to, ['accepted','cancelled'], true)) { flash('Invalid status.', 'danger'); return $res->withHeader('Location', '/quotations/' . $a['id'])->withStatus(302); }
     try {
         $db->beginTransaction();
         $st = $db->prepare('SELECT status FROM quotations WHERE id=? FOR UPDATE'); $st->execute([$a['id']]);
         $cur = $st->fetch()['status'] ?? null;
-        if ($cur !== 'issued' && !($cur === 'accepted' && $to === 'cancelled')) throw new \RuntimeException('Allowed only from issued (accept/reject/cancel).');
+        if ($cur !== 'issued' && !($cur === 'accepted' && $to === 'cancelled')) throw new \RuntimeException('Allowed only from issued (accept/cancel).');
         $db->prepare('UPDATE quotations SET status=?, cancel_reason=? WHERE id=?')->execute([$to, $p['reason'] ?? null, $a['id']]);
         Repo::audit($db, 'quote', (int)$a['id'], $to, $_SESSION['uid'] ?? null, $p['reason'] ?? null);
         $db->commit();
@@ -299,8 +299,8 @@ $app->post('/quotations/{id}/duplicate', function ($req, $res, $a) use ($db) {
 });
 $app->post('/quotations/{id}/delete', function ($req, $res, $a) use ($db) {
     if (!check_csrf((array)$req->getParsedBody())) return $res->withHeader('Location', '/quotations')->withStatus(302);
-    $db->prepare("DELETE FROM quotations WHERE id=? AND status='draft'")->execute([$a['id']]);
-    flash('Draft deleted (if it was a draft).');
+    $db->prepare("DELETE FROM quotations WHERE id=? AND status IN ('draft','cancelled')")->execute([$a['id']]);
+    flash('Quotation deleted (if it was a draft or cancelled).');
     return $res->withHeader('Location', '/quotations')->withStatus(302);
 });
 $app->post('/quotations/{id}/convert', function ($req, $res, $a) use ($db) {

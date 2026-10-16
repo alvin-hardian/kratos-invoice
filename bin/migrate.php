@@ -23,4 +23,15 @@ try {
 } catch (\Throwable $e) {
     echo 'Schema check skipped: ' . $e->getMessage() . "\n";
 }
+// 'rejected' quotation status removed: fold legacy rows into cancelled, then shrink ENUM.
+try {
+    $col = $pdo->query("SHOW COLUMNS FROM quotations LIKE 'status'")->fetch();
+    if ($col && str_contains((string)($col['Type'] ?? ''), "'rejected'")) {
+        echo "Migrating quotations.status: rejected -> cancelled\n";
+        $pdo->exec("UPDATE quotations SET status='cancelled' WHERE status='rejected'");
+        $pdo->exec("ALTER TABLE quotations MODIFY status ENUM('draft','issued','accepted','cancelled') NOT NULL DEFAULT 'draft'");
+    }
+} catch (\Throwable $e) {
+    echo 'Quotation status migration skipped: ' . $e->getMessage() . "\n";
+}
 echo "Done.\n";

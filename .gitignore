@@ -2,8 +2,8 @@
 .env
 !.env.example
 
-# dependencies
-vendor/
+# dependencies (composer, project root only — public/vendor/*.js|css must stay tracked)
+/vendor/
 
 # uploads & runtime
 public/uploads/*

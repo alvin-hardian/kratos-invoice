@@ -114,7 +114,7 @@ final class ToolRegistry
             ['name' => 'create_quotation_draft', 'description' => 'Create quotation draft. Needs customer_id, doc_date, ≥1 section with ≥1 line each.', 'inputSchema' => ['type' => 'object', 'required' => ['customer_id', 'doc_date', 'sections'], 'properties' => self::docProps('expiry_date')]],
             ['name' => 'update_quotation_draft', 'description' => 'Update a draft quotation (drafts only).', 'inputSchema' => ['type' => 'object', 'required' => ['id', 'customer_id', 'doc_date', 'sections'], 'properties' => array_merge(['id' => ['type' => 'integer']], self::docProps('expiry_date'))]],
             ['name' => 'issue_quotation', 'description' => 'Issue a draft quotation (assigns number QT-YYMMNNN).', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer']]]],
-            ['name' => 'set_quotation_status', 'description' => 'Accept/reject/cancel an issued quotation (accepted→cancelled allowed).', 'inputSchema' => ['type' => 'object', 'required' => ['id', 'to'], 'properties' => ['id' => ['type' => 'integer'], 'to' => ['type' => 'string', 'enum' => ['accepted', 'rejected', 'cancelled']], 'reason' => ['type' => 'string']]]],
+            ['name' => 'set_quotation_status', 'description' => 'Accept/cancel an issued quotation (accepted→cancelled allowed).', 'inputSchema' => ['type' => 'object', 'required' => ['id', 'to'], 'properties' => ['id' => ['type' => 'integer'], 'to' => ['type' => 'string', 'enum' => ['accepted', 'cancelled']], 'reason' => ['type' => 'string']]]],
             ['name' => 'duplicate_quotation', 'description' => 'Duplicate a quotation as a new draft.', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer']]]],
             ['name' => 'convert_quotation_to_invoice', 'description' => 'Convert accepted quotation to invoice draft (duplicate-safe).', 'inputSchema' => ['type' => 'object', 'required' => ['id'], 'properties' => ['id' => ['type' => 'integer', 'description' => 'Quotation id']]]],
             ['name' => 'create_invoice_draft', 'description' => 'Create invoice draft directly (without quotation).', 'inputSchema' => ['type' => 'object', 'required' => ['customer_id', 'doc_date', 'sections'], 'properties' => array_merge(self::docProps('due_date'), ['show_signature' => ['type' => 'boolean', 'description' => 'Show signature placeholder on the invoice PDF (director name comes from server .env)']])]],
@@ -435,14 +435,14 @@ final class ToolRegistry
         $id = (int)($args['id'] ?? 0);
         $to = (string)($args['to'] ?? '');
         if ($id <= 0) throw new RuntimeException('id is required.');
-        if (!in_array($to, ['accepted', 'rejected', 'cancelled'], true)) throw new RuntimeException("to must be accepted|rejected|cancelled.");
+        if (!in_array($to, ['accepted', 'cancelled'], true)) throw new RuntimeException("to must be accepted|cancelled.");
         $db->beginTransaction();
         try {
             $st = $db->prepare('SELECT status FROM quotations WHERE id=? FOR UPDATE'); $st->execute([$id]);
             $cur = $st->fetch()['status'] ?? null;
             if ($cur === null) throw new RuntimeException('Quotation not found.');
             if (!($cur === 'issued' || ($cur === 'accepted' && $to === 'cancelled'))) {
-                throw new RuntimeException('Allowed only from issued (accept/reject/cancel).');
+                throw new RuntimeException('Allowed only from issued (accept/cancel).');
             }
             $db->prepare('UPDATE quotations SET status=?, cancel_reason=? WHERE id=?')->execute([$to, $args['reason'] ?? null, $id]);
             Repo::audit($db, 'quote', $id, 'mcp_' . $to, Auth::actorId(), isset($args['reason']) ? (string)$args['reason'] : null);

@@ -41,7 +41,7 @@ Open http://127.0.0.1:8099/login
 - Set `APP_ENV=prod`, `APP_DEBUG=0` in `.env`; ensure `public/uploads` writable; display type uses Inter (see `public/fonts`).
 
 ## Key workflows
-- Quotations: new → save draft (sections required, every line in a section) → issue (QT-2608001) → accept/reject/cancel → convert (one invoice per quotation, duplicate-safe) → invoice draft → issue (INV-2608001).
+- Quotations: new → save draft (sections required, every line in a section) → issue (QT-2608001) → accept/cancel → convert (one invoice per quotation, duplicate-safe) → invoice draft → issue (INV-2608001).
 - Editor: customer select + inline create, reusable-product insert (defaults only, free unit-price/qty/unit/mult edit; totals always computed), per-line multiplier toggle, waived checkbox (Rp0 + Waived/Compliment/Included label, basis hidden in PDF), document discount (fixed/% pre-tax), DP terms (%/fixed), multi-bank select with preview, live totals.
 - Invoices: manual payments (dp/balance/other) with overpay + dp-cap protection (transactions), void with reason, cancel blocked with active payments.
 - Summary: date range + customer filter, full-dataset aggregates, invoice table + CSV export with same filters.

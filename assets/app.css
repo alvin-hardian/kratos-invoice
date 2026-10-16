@@ -34,7 +34,7 @@ body {
 .badge-draft { background: #64748b; }
 .badge-issued { background: #7a24d6; }
 .badge-accepted, .badge-paid { background: #059669; }
-.badge-rejected, .badge-cancelled, .badge-overdue { background: #dc2626; }
+.badge-cancelled, .badge-overdue { background: #dc2626; }
 .badge-partial { background: #d97706; }
 .badge-unpaid { background: #64748b; }
 

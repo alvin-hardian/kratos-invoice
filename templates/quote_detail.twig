@@ -16,9 +16,9 @@
 <form style="display:inline" method="post" action="/quotations/{{ d.id }}/delete">{{ csrf() }}<button class="btn btn-danger" onclick="return confirm('Delete draft?')">Delete</button></form>{% endif %}
 {% if d.status=='issued' %}
 <form style="display:inline" method="post" action="/quotations/{{ d.id }}/status">{{ csrf() }}<input type="hidden" name="to" value="accepted"><button class="btn btn-primary">Accept</button></form>
-<form style="display:inline" method="post" action="/quotations/{{ d.id }}/status">{{ csrf() }}<input type="hidden" name="to" value="rejected"><button class="btn btn-default">Reject</button></form>
 <form style="display:inline" method="post" action="/quotations/{{ d.id }}/status">{{ csrf() }}<input type="hidden" name="to" value="cancelled"><input type="hidden" name="reason" value="cancelled from UI"><button class="btn btn-danger" onclick="return confirm('Cancel?')">Cancel</button></form>{% endif %}
 {% if d.status=='accepted' %}<form style="display:inline" method="post" action="/quotations/{{ d.id }}/convert">{{ csrf() }}<button class="btn btn-primary">{{ d.converted_invoice_id ? 'Open invoice' : 'Convert to invoice' }}</button></form>{% endif %}
+{% if d.status in ['cancelled'] %}<form style="display:inline" method="post" action="/quotations/{{ d.id }}/delete">{{ csrf() }}<button class="btn btn-danger" onclick="return confirm('Delete this cancelled quotation? This cannot be undone.')">Delete</button></form>{% endif %}
 <form style="display:inline" method="post" action="/quotations/{{ d.id }}/duplicate">{{ csrf() }}<button class="btn btn-default">Duplicate</button></form>
 <a class="btn btn-default" href="/quotations/{{ d.id }}/pdf" target="_blank">Preview PDF</a>
 <a class="btn btn-default" href="/quotations/{{ d.id }}/pdf?dl=1">Download</a>

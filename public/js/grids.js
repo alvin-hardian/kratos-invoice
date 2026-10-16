@@ -3,7 +3,7 @@ function fmtMoney(n) { return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
 function badgeHtml(text, cls) { return '<span class="lbl ' + cls + '">' + escapeHtml(text) + '</span>'; }
 function statusHtml(s) {
   var map = {draft: 'badge-draft', issued: 'badge-issued', accepted: 'badge-accepted', paid: 'badge-paid',
-    rejected: 'badge-cancelled', cancelled: 'badge-cancelled', partial: 'badge-partial', unpaid: 'badge-unpaid'};
+    cancelled: 'badge-cancelled', partial: 'badge-partial', unpaid: 'badge-unpaid'};
   return badgeHtml(s, map[s] || 'badge-draft');
 }
 /* Legacy Grid.js shims (no-ops now that Grid.js is removed). */
