@@ -127,13 +127,26 @@ $app->get('/products', function ($req, $res) use ($db, $twig) {
 $app->post('/products', function ($req, $res) use ($db) {
     $p = (array)$req->getParsedBody();
     if (!check_csrf($p)) { flash('Invalid session.', 'danger'); return $res->withHeader('Location', '/products')->withStatus(302); }
+    if (trim($p['name'] ?? '') === '') {
+        if (($p['ajax'] ?? '') === '1') { $res->getBody()->write(json_encode(['error' => 'Name required.'])); return $res->withHeader('Content-Type', 'application/json')->withStatus(422); }
+        flash('Name required.', 'danger'); return $res->withHeader('Location', '/products')->withStatus(302);
+    }
     $vals = [$p['name'], $p['description'] ?: null, $p['unit_label'] ?: 'pcs', \App\Support\Format::parseIdr($p['unit_price'] ?? 0), ($p['tax_rate_id'] ?? '') === '' ? null : (int)$p['tax_rate_id'], !empty($p['mult_enabled_default']) ? 1 : 0, $p['mult_label'] ?: null, ($p['mult_value'] ?? '') === '' ? null : \App\Support\Format::parseQty($p['mult_value']), !empty($p['active']) ? 1 : 1];
     if (!empty($p['id'])) {
         $db->prepare('UPDATE products SET name=?, description=?, unit_label=?, unit_price=?, tax_rate_id=?, mult_enabled_default=?, mult_label=?, mult_value=?, active=? WHERE id=?')->execute([...$vals, $p['id']]);
+        $pid = (int)$p['id'];
     } else {
         $db->prepare('INSERT INTO products (name, description, unit_label, unit_price, tax_rate_id, mult_enabled_default, mult_label, mult_value, active) VALUES (?,?,?,?,?,?,?,?,?)')->execute($vals);
+        $pid = (int)$db->lastInsertId();
     }
     flash('Item saved.');
+    // inline-create from editor returns the new row as JSON
+    if (($p['ajax'] ?? '') === '1') {
+        $st = $db->prepare('SELECT p.*, t.rate tax_rate_val FROM products p LEFT JOIN tax_rates t ON t.id=p.tax_rate_id WHERE p.id=?');
+        $st->execute([$pid]);
+        $res->getBody()->write(json_encode($st->fetch() ?: ['id' => $pid]));
+        return $res->withHeader('Content-Type', 'application/json');
+    }
     return $res->withHeader('Location', '/products')->withStatus(302);
 });
 $app->post('/products/{id}/archive', function ($req, $res, $a) use ($db) {

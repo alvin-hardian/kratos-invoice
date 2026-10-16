@@ -65,10 +65,18 @@ function initProductPicks(scope) {
       valueField: 'id', labelField: 'name', searchField: ['name', 'description'],
       placeholder: 'Type to search products…',
       maxOptions: 20,
+      create: true,
+      createFilter: function(input){ return input.trim().length > 0; },
       render: {
         option: function (d, escape) {
           return '<div><span>' + escape(d.name) + '</span><span class="opt-price">' + escape(d.price_text || '') + '</span>' +
             (d.description ? '<div class="text-xs text-slate-500">' + escape(d.description) + '</div>' : '') + '</div>';
+        },
+        no_results: function (d, escape) {
+          return '<div class="text-xs text-slate-500">No items found — press Enter to add "' + escape(d.input) + '" as a new item.</div>';
+        },
+        option_create: function (d, escape) {
+          return '<div>+ Add <b>' + escape(d.input) + '</b> as new item…</div>';
         }
       },
       load: function (q, cb) {
@@ -88,13 +96,31 @@ function initProductPicks(scope) {
         // Pre-seeded display stubs carry no pricing — the line already holds
         // those values, so re-applying would blank them. Skip stubs.
         if (sel && sel.unit_price !== undefined) applyProduct(si, li, sel);
+      },
+      onOptionAdd: function (value, data) {
+        // Options we added ourselves (restored selections, saved rows) are
+        // marked _known — only free-form entries reach the server.
+        if (data && data._known) return;
+        const picker = this;
+        fetch('/products', {method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: new URLSearchParams({name: value, ajax: '1', csrf: document.querySelector('[name=csrf]').value})})
+          .then(r => r.json().then(j => ({ok: r.ok, j})))
+          .then(({ok, j}) => {
+            if (!ok || !j || j.error || !j.id) throw new Error((j && j.error) || 'Save failed');
+            const row = {id: j.id, name: j.name, description: j.description || '', unit_label: j.unit_label, unit_price: j.unit_price, price_text: fmtIDR(j.unit_price), mult_enabled_default: j.mult_enabled_default, mult_label: j.mult_label, mult_value: j.mult_value, tax_rate_id: j.tax_rate_id, tax_rate_val: j.tax_rate_val, _known: true};
+            picker.removeOption(value);
+            picker.addOption(row);
+            picker.setValue(String(row.id), true);
+            applyProduct(si, li, row);
+            toast('Item saved to products.');
+          })
+          .catch(() => { picker.removeOption(value); picker.clear(true); toast('Could not save item.', 'danger'); });
       }
     });
     // Restore the current selection so the name survives re-renders and
     // edit-page loads (lines carry product_id + product_name in the model).
     const ln = (E.sections[si] && E.sections[si].lines[li]) || null;
     if (ln && ln.product_id) {
-      ts.addOption({id: ln.product_id, name: ln.product_name || ('#' + ln.product_id), description: '', price_text: ''});
+      ts.addOption({id: ln.product_id, name: ln.product_name || ('#' + ln.product_id), description: '', price_text: '', _known: true});
       ts.setValue(String(ln.product_id), true);
     }
   });
