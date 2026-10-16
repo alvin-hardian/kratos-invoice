@@ -372,6 +372,17 @@ $app->post('/invoices/{id}/cancel', function ($req, $res, $a) use ($db) {
     flash('Invoice cancelled.');
     return $res->withHeader('Location', '/invoices/' . $a['id'])->withStatus(302);
 });
+$app->post('/invoices/{id}/delete', function ($req, $res, $a) use ($db) {
+    if (!check_csrf((array)$req->getParsedBody())) return $res->withHeader('Location', '/invoices')->withStatus(302);
+    $st = $db->prepare('SELECT status FROM invoices WHERE id=?'); $st->execute([$a['id']]);
+    if (($st->fetch()['status'] ?? null) !== 'draft') { flash('Only drafts can be deleted.', 'danger'); return $res->withHeader('Location', '/invoices/' . $a['id'])->withStatus(302); }
+    $c = $db->prepare('SELECT COUNT(*) c FROM payments WHERE invoice_id=? AND voided_at IS NULL'); $c->execute([$a['id']]);
+    if ($c->fetch()['c'] > 0) { flash('Cannot delete: active payments exist.', 'danger'); return $res->withHeader('Location', '/invoices/' . $a['id'])->withStatus(302); }
+    $db->prepare('UPDATE quotations SET converted_invoice_id=NULL WHERE converted_invoice_id=?')->execute([$a['id']]);
+    $db->prepare("DELETE FROM invoices WHERE id=? AND status='draft'")->execute([$a['id']]);
+    flash('Invoice draft deleted.');
+    return $res->withHeader('Location', '/invoices')->withStatus(302);
+});
 $app->post('/invoices/{id}/payments', function ($req, $res, $a) use ($db) {
     $p = (array)$req->getParsedBody();
     if (!check_csrf($p)) return $res->withHeader('Location', '/invoices/' . $a['id'])->withStatus(302);

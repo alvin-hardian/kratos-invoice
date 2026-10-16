@@ -30,19 +30,38 @@ function taxOptions(sel){ let h='<option value="">No tax</option>'; (E.taxes||[]
 function applyProduct(si, li, p) {
   const line = E.sections[si].lines[li];
   line.product_id = p.id || null;
+  line.product_name = p.name || '';
   if (!line.description) line.description = p.description || p.name;
   line.unit_label = p.unit_label; line.unit_price = p.unit_price;
   line.mult_enabled = p.mult_enabled_default ? 1 : 0;
   line.mult_label = p.mult_label || 'days'; line.mult_value = p.mult_value || 1;
   line.tax_rate_id = p.tax_rate_id || ''; line.tax_rate = parseFloat(p.tax_rate_val || 0);
-  render();
+  // Update this line's card in place. A full render() here would destroy the
+  // TomSelect instance that fired onChange and wipe the displayed product name.
+  const pick = document.querySelector(`#sections select.prod-pick[data-s="${si}"][data-l="${li}"]`);
+  const card = pick ? pick.closest('.rounded-lg') : null;
+  if (card) {
+    const set = (f, v) => { const el = card.querySelector(`[data-f="${f}"]`); if (el) el.value = v ?? ''; };
+    set('description', line.description);
+    set('unit_label', line.unit_label);
+    set('unit_price', line.unit_price);
+    const tax = card.querySelector('[data-f="tax_rate_id"]');
+    if (tax) tax.value = String(line.tax_rate_id || '');
+    const mc = card.querySelector('[data-f="mult_enabled"]');
+    if (mc) mc.checked = !!line.mult_enabled;
+    const mctl = card.querySelector('.mult-ctl');
+    if (mctl) mctl.style.display = line.mult_enabled ? '' : 'none';
+    set('mult_value', fmtQty(line.mult_value ?? 1));
+    set('mult_label', line.mult_label || 'days');
+  }
+  totals();
 }
 function initProductPicks(scope) {
   if (typeof TomSelect === 'undefined') return;
   scope.querySelectorAll('select.prod-pick').forEach(el => {
     if (el.tomselect) return;
     const si = +el.dataset.s, li = +el.dataset.l;
-    new TomSelect(el, {
+    const ts = new TomSelect(el, {
       valueField: 'id', labelField: 'name', searchField: ['name', 'description'],
       placeholder: 'Type to search products…',
       maxOptions: 20,
@@ -66,9 +85,18 @@ function initProductPicks(scope) {
       onChange: function (id) {
         if (!id) return;
         const sel = this.options[id];
-        if (sel) applyProduct(si, li, sel);
+        // Pre-seeded display stubs carry no pricing — the line already holds
+        // those values, so re-applying would blank them. Skip stubs.
+        if (sel && sel.unit_price !== undefined) applyProduct(si, li, sel);
       }
     });
+    // Restore the current selection so the name survives re-renders and
+    // edit-page loads (lines carry product_id + product_name in the model).
+    const ln = (E.sections[si] && E.sections[si].lines[li]) || null;
+    if (ln && ln.product_id) {
+      ts.addOption({id: ln.product_id, name: ln.product_name || ('#' + ln.product_id), description: '', price_text: ''});
+      ts.setValue(String(ln.product_id), true);
+    }
   });
 }
 function render(){

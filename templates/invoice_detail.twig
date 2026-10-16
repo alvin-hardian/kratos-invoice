@@ -28,7 +28,8 @@
   <div class="inv-actions">
     {% if d.status=='draft' or (d.status=='issued' and not d.paid) %}<a class="btn btn-default btn-sm" href="/invoices/{{ d.id }}/edit">Edit</a>{% endif %}
     {% if d.status=='draft' %}
-    <form style="display:inline" method="post" action="/invoices/{{ d.id }}/issue">{{ csrf() }}<button class="btn btn-primary btn-sm" onclick="return confirm('Issue invoice?')">Issue</button></form>{% endif %}
+    <form style="display:inline" method="post" action="/invoices/{{ d.id }}/issue">{{ csrf() }}<button class="btn btn-primary btn-sm" onclick="return confirm('Issue invoice?')">Issue</button></form>
+    <form style="display:inline" method="post" action="/invoices/{{ d.id }}/delete">{{ csrf() }}<button class="btn btn-danger btn-sm" onclick="return confirm('Delete draft?')">Delete</button></form>{% endif %}
     {% if d.status=='issued' %}<form style="display:inline" method="post" action="/invoices/{{ d.id }}/cancel">{{ csrf() }}<input type="hidden" name="reason" value="cancelled from UI"><button class="btn btn-danger btn-sm" onclick="return confirm('Cancel invoice?')">Cancel</button></form>{% endif %}
     <a class="btn btn-default btn-sm" href="/invoices/{{ d.id }}/pdf" target="_blank">Preview PDF</a>
     <a class="btn btn-default btn-sm" href="/invoices/{{ d.id }}/pdf?dl=1">Download</a>

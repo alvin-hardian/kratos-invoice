@@ -223,7 +223,7 @@ final class DocService
         $s->execute([$id]);
         $sections = $s->fetchAll();
         foreach ($sections as &$sec) {
-            $l = $db->prepare("SELECT * FROM $lineT WHERE section_id=? ORDER BY sort_order, id");
+            $l = $db->prepare("SELECT l.*, p.name AS product_name FROM $lineT l LEFT JOIN products p ON p.id=l.product_id WHERE section_id=? ORDER BY sort_order, id");
             $l->execute([$sec['id']]);
             $sec['lines'] = $l->fetchAll();
         }
