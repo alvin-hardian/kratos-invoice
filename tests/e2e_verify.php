@@ -75,8 +75,7 @@ if (($snap['name'] ?? '') !== $origName) { echo "FAIL snapshot not frozen\n"; ex
 echo "PASS snapshots frozen\n";
 // PDF render
 $twig = \Slim\Views\Twig::create(__DIR__ . '/../templates', ['cache' => false]);
-$twig->getEnvironment()->addFilter(new \Twig\TwigFilter('idr', fn($x) => \App\Support\Format::idr((int)$x)));
-$twig->getEnvironment()->addFilter(new \Twig\TwigFilter('json_decode', fn($v) => json_decode((string)$v, true)));
+\App\Support\TwigFactory::register($twig->getEnvironment());
 $pdf = \App\Services\PdfService::render('pdf/doc.twig', ['d' => $inv3, 'kind' => 'invoice', 'settings' => \App\Support\Repo::settings($pdo), 'font_dir' => realpath(__DIR__ . '/../public/fonts')], $twig);
 if (strlen($pdf) < 1000 || substr($pdf, 0, 4) !== '%PDF') { echo "FAIL pdf\n"; exit(1); }
 file_put_contents(__DIR__ . '/e2e_sample.pdf', $pdf);

@@ -202,15 +202,46 @@ function totals(){
   [...cards].forEach((el,i)=>{ const sub=el.querySelector('.sec-sub'); if(sub) sub.textContent='Section subtotal: '+fmtIDR(secSubs[i]); });
   const flat=r.amounts; const flatLines=E.sections.flatMap(s=>s.lines); let k=0;
   document.querySelectorAll('#sections .line-amt').forEach(el=>{ const l=flatLines[k]; el.textContent=fmtIDR(flat[k])+' ('+lineBreakdown(l||{})+')'; k++; });
-  let h=`<table class="w-full"><tr><td class="py-1">Subtotal</td><td class="py-1 text-right">${fmtIDR(r.subtotal)}</td></tr><tr><td class="py-1">Discount</td><td class="py-1 text-right">− ${fmtIDR(r.disc)}</td></tr>`;
+  let h=`<table class="w-full"><tr><td class="py-1">Subtotal</td><td class="py-1 text-right">${fmtIDR(r.subtotal)}</td></tr>`;
+  if (r.disc > 0) h+=`<tr><td class="py-1">Discount</td><td class="py-1 text-right">− ${fmtIDR(r.disc)}</td></tr>`;
   r.breakdown.forEach(b=>{h+=`<tr><td class="py-1">Tax ${b.rate}%</td><td class="py-1 text-right">${fmtIDR(b.tax)}</td></tr>`;});
-  h+=`<tr class="font-semibold"><td class="py-1">Total</td><td class="py-1 text-right">${fmtIDR(r.total)}</td></tr><tr><td class="py-1">Requested DP</td><td class="py-1 text-right">${fmtIDR(r.dp)}</td></tr><tr><td class="py-1">Remaining after DP</td><td class="py-1 text-right">${fmtIDR(r.remain)}</td></tr></table>`;
+  h+=`<tr class="font-semibold"><td class="py-1">Total</td><td class="py-1 text-right">${fmtIDR(r.total)}</td></tr>`;
+  if (document.getElementById('f-pt').value !== 'none') h+=`<tr><td class="py-1">Requested DP</td><td class="py-1 text-right">${fmtIDR(r.dp)}</td></tr><tr><td class="py-1">Remaining after DP</td><td class="py-1 text-right">${fmtIDR(r.remain)}</td></tr>`;
+  h+=`</table>`;
   document.getElementById('totals').innerHTML=h;
   const banks=[...document.querySelectorAll('.bank-cb:checked')].map(c=>c.parentElement.textContent.trim());
   document.getElementById('bank-preview').textContent=banks.length?('Showing: '+banks.join(' | ')):'No bank accounts will be displayed.';
 }
 document.getElementById('add-section').onclick=()=>{E.sections.push({title:'Section '+(E.sections.length+1),description:'',lines:[{description:'',quantity:1,unit_label:'pcs',unit_price:0,mult_enabled:0,mult_label:'days',mult_value:1,tax_rate_id:'',tax_rate:0,waived:0,price_mode:'normal'}]});render();};
 document.getElementById('doc-form').onsubmit=function(ev){
+  // Inline pre-check so fixable mistakes never cost a server round-trip.
+  const bad = [];
+  if (!document.getElementById('f-customer').value) bad.push(['f-customer', 'Choose a customer first.']);
+  E.sections.forEach((sec, si) => {
+    if (!String(sec.title || '').trim()) bad.push([`sec-title-${si}`, `Section ${si+1} needs a title.`]);
+    sec.lines.forEach((l, li) => {
+      if (!String(l.description || '').trim()) { l.show_desc = 1; bad.push([`sec-line-${si}-${li}`, `Item ${li+1} in section ${si+1} needs a description.`]); }
+    });
+  });
+  if (!E.sections.length || !E.sections.some(s => s.lines.length)) bad.push(['add-section', 'Add at least one item.']);
+  if (bad.length) {
+    ev.preventDefault();
+    render();
+    toast(bad[0][1], 'danger');
+    const map = { 'f-customer': () => document.getElementById('f-customer'), 'add-section': () => document.getElementById('add-section') };
+    let el = null;
+    if (map[bad[0][0]]) el = map[bad[0][0]]();
+    else {
+      const m = /^sec-line-(\d+)-(\d+)$/.exec(bad[0][0]);
+      if (m) el = document.querySelector(`#sections [data-s="${m[1]}"][data-l="${m[2]}"][data-f="description"]`);
+      else {
+        const s = /^sec-title-(\d+)$/.exec(bad[0][0]);
+        if (s) el = document.querySelector(`#sections [data-s="${s[1]}"][data-f="title"]`);
+      }
+    }
+    if (el) { el.scrollIntoView({block: 'center'}); el.focus({preventScroll: true}); }
+    return false;
+  }
   // serialize sections into hidden inputs (nested PHP arrays)
   E.sections.forEach((sec,si)=>{
     [['title',sec.title],['description',sec.description||'']].forEach(([f,v])=>{ const h=document.createElement('input'); h.type='hidden'; h.name=`sections[${si}][${f}]`; h.value=v; this.appendChild(h); });

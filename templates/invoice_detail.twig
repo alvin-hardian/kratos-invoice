@@ -1,21 +1,21 @@
 {% extends 'layout.twig' %}
 {% block content %}
-{% set payst = d.balance == 0 and d.total > 0 ? 'paid' : (d.paid > 0 ? 'partial' : 'unpaid') %}
+{% set display = d.display|default(d.status) %}
 <div class="inv-hero">
   <div class="inv-hero-top">
     <div>
       <div class="inv-eyebrow">Invoice</div>
       <div class="inv-title">{{ d.number ? '#' ~ d.number : '(draft)' }}</div>
       <div class="inv-badges">
-        <span class="inline-block rounded px-2 py-0.5 text-xs font-medium text-white badge-{{ d.status }}">{{ d.status }}</span>
-        <span class="inline-block rounded px-2 py-0.5 text-xs font-medium text-white badge-{{ payst }}">{{ payst }}</span>
-        {% if d.status=='issued' and d.due_date and d.due_date < 'now'|date('Y-m-d') and d.balance > 0 %}<span class="inline-block rounded bg-red-600 px-2 py-0.5 text-xs font-medium text-white">overdue</span>{% endif %}
+        <span class="inline-block rounded px-2 py-0.5 text-xs font-medium text-white badge-{{ display }}">{{ display }}</span>
+        {% if d.overdue %}<span class="inline-block rounded bg-red-600 px-2 py-0.5 text-xs font-medium text-white">overdue</span>{% endif %}
       </div>
+      <div class="mt-1 text-xs text-slate-500">Doc status: {{ d.status }}{% if display != d.status and d.status != 'cancelled' %} · payment: {{ display }}{% endif %}</div>
     </div>
     <div class="inv-side">
       <div class="inv-cap">Total</div>
       <div class="inv-total">{{ d.total|idr }}</div>
-      <div><span class="inv-balance {{ d.balance == 0 ? 'ok' }}">{{ d.balance == 0 ? 'Settled' : 'Due ' ~ d.balance|idr }}</span></div>
+      <div><span class="inv-balance {{ d.balance == 0 ? 'ok' }}">{{ d.balance == 0 ? 'Lunas' : 'Due ' ~ d.balance|idr }}</span></div>
     </div>
   </div>
   <div class="inv-meta">
@@ -26,7 +26,7 @@
     <div><div class="k">Signature</div><div class="v">{{ d.show_signature ? 'On PDF' : '—' }}</div></div>
   </div>
   <div class="inv-actions">
-    {% if d.status=='draft' or (d.status=='issued' and not d.paid) %}<a class="btn btn-default btn-sm" href="/invoices/{{ d.id }}/edit">Edit</a>{% endif %}
+    {% if d.status=='draft' or (d.status=='issued' and not d.paid) %}<a class="btn btn-default btn-sm" href="/invoices/{{ d.id }}/edit">Edit</a>{% elseif d.status=='issued' %}<span class="btn btn-default btn-sm opacity-50" title="Locked — void all payments to edit">Edit locked</span>{% endif %}
     {% if d.status=='draft' %}
     <form style="display:inline" method="post" action="/invoices/{{ d.id }}/issue">{{ csrf() }}<button class="btn btn-primary btn-sm" onclick="return confirm('Issue invoice?')">Issue</button></form>
     <form style="display:inline" method="post" action="/invoices/{{ d.id }}/delete">{{ csrf() }}<button class="btn btn-danger btn-sm" onclick="return confirm('Delete draft?')">Delete</button></form>{% endif %}
@@ -45,16 +45,21 @@
 <div class="card mb-3 p-4"><h4 class="font-display mb-2 text-lg">Payment instructions</h4>{% for b in d.banks %}{% set s = b.snapshot|json_decode %}<p class="text-sm">{{ s.bank_name }} · {{ s.account_number }} · {{ s.holder }}{% if s.branch %} ({{ s.branch }}){% endif %}{% if s.note %}<br><span class="text-slate-500">{{ s.note }}</span>{% endif %}</p>{% else %}<p class="text-sm text-slate-400">No bank accounts attached — the PDF will show the company default account(s), if set.</p>{% endfor %}</div>
 <div class="card mb-3 p-4"><h4 class="font-display mb-2 text-lg">Payments</h4>
 <table class="tbl w-full text-sm"><thead><tr><th class="px-2 py-1.5">Date</th><th class="px-2 py-1.5 text-right">Amount</th><th class="px-2 py-1.5">Purpose</th><th class="px-2 py-1.5">Method</th><th class="px-2 py-1.5">Ref</th><th class="px-2 py-1.5"></th></tr></thead><tbody>
-{% for p in d.payments %}<tr class="border-t border-slate-100"><td class="px-2 py-1.5">{{ p.pay_date|d }}</td><td class="px-2 py-1.5 text-right inv-num">{{ p.amount|idr }}</td><td class="px-2 py-1.5">{{ p.purpose }}</td><td class="px-2 py-1.5">{{ p.method }}</td><td class="px-2 py-1.5">{{ p.reference }}</td><td class="px-2 py-1.5">{% if not p.voided_at and d.status=='issued' %}<form method="post" action="/payments/{{ p.id }}/void">{{ csrf() }}<input type="hidden" name="reason" value="void from UI"><button class="btn btn-danger btn-sm" onclick="return confirm('Void payment?')">Void</button></form>{% else %}{{ p.voided_at ? 'voided' }}{% endif %}</td></tr>{% else %}<tr><td colspan="6" class="px-2 py-3 text-center text-slate-400">No payments.</td></tr>{% endfor %}
+{% for p in d.payments %}<tr class="border-t border-slate-100"><td class="px-2 py-1.5">{{ p.pay_date|d }}</td><td class="px-2 py-1.5 text-right inv-num">{{ p.amount|idr }}</td><td class="px-2 py-1.5">{{ p.purpose }}</td><td class="px-2 py-1.5">{{ p.method }}</td><td class="px-2 py-1.5">{{ p.reference }}</td><td class="px-2 py-1.5">{% if not p.voided_at and d.status=='issued' %}<form method="post" action="/payments/{{ p.id }}/void">{{ csrf() }}<label class="sr-only" for="void-reason-{{ p.id }}">Void reason</label><input class="field max-w-[10rem]" id="void-reason-{{ p.id }}" name="reason" placeholder="Reason *" required><button class="btn btn-danger btn-sm mt-1" onclick="return confirm('Void payment?')" aria-label="Void payment of {{ p.amount|idr }} on {{ p.pay_date|d }}">Void</button></form>{% else %}{{ p.voided_at ? 'voided' }}{% endif %}</td></tr>{% else %}<tr><td colspan="6" class="px-2 py-3 text-center text-slate-400">No payments.</td></tr>{% endfor %}
 </tbody></table></div>
 {% if d.status=='issued' and d.balance > 0 %}
 <div class="card mb-3 p-4"><h4 class="font-display mb-2 text-lg">Record payment</h4>
 <form method="post" action="/invoices/{{ d.id }}/payments" class="flex flex-wrap gap-2">{{ csrf() }}
-<input class="field max-w-[10rem]" name="amount" placeholder="Amount IDR" required>
-<input class="field max-w-[10rem]" type="date" name="pay_date" value="{{ 'now'|date('Y-m-d') }}">
-<select class="field max-w-[10rem]" name="purpose"><option value="balance">balance</option><option value="dp">down payment</option><option value="other">other</option></select>
-<input class="field max-w-[10rem]" name="method" value="Transfer">
-<input class="field max-w-[10rem]" name="reference" placeholder="Reference">
+<label class="sr-only" for="pay-amount">Amount IDR</label>
+<input class="field max-w-[10rem]" id="pay-amount" name="amount" placeholder="Amount IDR *" required>
+<label class="sr-only" for="pay-date">Payment date</label>
+<input class="field max-w-[10rem]" id="pay-date" type="date" name="pay_date" value="{{ 'now'|date('Y-m-d') }}">
+<label class="sr-only" for="pay-purpose">Purpose</label>
+<select class="field max-w-[10rem]" id="pay-purpose" name="purpose"><option value="balance">balance</option><option value="dp">down payment</option><option value="other">other</option></select>
+<label class="sr-only" for="pay-method">Method</label>
+<input class="field max-w-[10rem]" id="pay-method" name="method" value="Transfer">
+<label class="sr-only" for="pay-ref">Reference</label>
+<input class="field max-w-[10rem]" id="pay-ref" name="reference" placeholder="Reference">
 <button class="btn btn-primary">Add payment</button></form></div>{% endif %}
 <h4 class="font-display mb-1 text-lg">Audit</h4><ul class="list-disc pl-5 text-sm text-slate-600">{% for l in logs %}<li>{{ l.created_at }} — {{ l.action }} {{ l.detail }}</li>{% endfor %}</ul>
 {% endblock %}

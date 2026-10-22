@@ -55,6 +55,7 @@ $app->post('/login', function ($req, $res) use ($db) {
     return $res->withHeader('Location', '/login')->withStatus(302);
 });
 $app->post('/logout', function ($req, $res) {
+    if (!check_csrf((array)$req->getParsedBody())) return $res->withHeader('Location', '/')->withStatus(302);
     session_destroy();
     return $res->withHeader('Location', '/login')->withStatus(302);
 });
@@ -229,9 +230,17 @@ $app->get('/quotations', function ($req, $res) use ($db, $twig) {
 $app->get('/quotations/new', function ($req, $res) use ($db, $twig) {
     return $twig->render($res, 'editor.twig', editorData($db, 'quote', null));
 });
-$app->post('/quotations', function ($req, $res) use ($db) {
+$app->post('/quotations', function ($req, $res) use ($db, $twig) {
     $p = (array)$req->getParsedBody();
     if (!check_csrf($p)) { flash('Invalid session.', 'danger'); return $res->withHeader('Location', '/quotations')->withStatus(302); }
+    $repop = function () use ($db, $p) {
+        $base = editorData($db, 'quote', null);
+        try {
+            $n = DocService::normalizePayload($p, $db);
+            $base['doc'] = repopDoc($n);
+        } catch (\Throwable) { /* keep blank form */ }
+        return $base;
+    };
     try {
         $n = DocService::normalizePayload($p, $db);
         if ($errs = Calculator::validateDocument(['customer_id' => $n['customer_id'], 'doc_date' => $n['doc_date'], 'sections' => $n['sections'], 'discount_type' => $n['discount_type'], 'discount_value' => $n['discount_value']])) throw new \RuntimeException(implode(' ', $errs));
@@ -240,6 +249,8 @@ $app->post('/quotations', function ($req, $res) use ($db) {
         return $res->withHeader('Location', "/quotations/$id")->withStatus(302);
     } catch (\Throwable $e) {
         flash($e->getMessage(), 'danger');
+        $data = $repop();
+        if ($data['doc']) return $twig->render($res->withStatus(422), 'editor.twig', $data);
         return $res->withHeader('Location', '/quotations/new')->withStatus(302);
     }
 });
@@ -254,17 +265,25 @@ $app->get('/quotations/{id}/edit', function ($req, $res, $a) use ($db, $twig) {
     if (!$d || $d['status'] !== 'draft') { flash('Only drafts can be edited.', 'danger'); return $res->withHeader('Location', '/quotations/' . $a['id'])->withStatus(302); }
     return $twig->render($res, 'editor.twig', editorData($db, 'quote', $d));
 });
-$app->post('/quotations/{id}', function ($req, $res, $a) use ($db) {
+$app->post('/quotations/{id}', function ($req, $res, $a) use ($db, $twig) {
     $p = (array)$req->getParsedBody();
     if (!check_csrf($p)) return $res->withHeader('Location', '/quotations/' . $a['id'])->withStatus(302);
     try {
         $n = DocService::normalizePayload($p, $db);
+        if ($errs = Calculator::validateDocument(['customer_id' => $n['customer_id'], 'doc_date' => $n['doc_date'], 'sections' => $n['sections'], 'discount_type' => $n['discount_type'], 'discount_value' => $n['discount_value']])) throw new \RuntimeException(implode(' ', $errs));
         DocService::saveDraft($db, 'quote', (int)$a['id'], $n, $_SESSION['uid'] ?? null);
         flash('Draft updated.');
         return $res->withHeader('Location', '/quotations/' . $a['id'])->withStatus(302);
     } catch (\Throwable $e) {
         flash($e->getMessage(), 'danger');
-        return $res->withHeader('Location', '/quotations/' . $a['id'] . '/edit')->withStatus(302);
+        try {
+            $n = DocService::normalizePayload($p, $db);
+            $data = editorData($db, 'quote', null);
+            $data['doc'] = repopDoc($n) + ['id' => (int)$a['id'], 'status' => 'draft'];
+            return $twig->render($res->withStatus(422), 'editor.twig', $data);
+        } catch (\Throwable) {
+            return $res->withHeader('Location', '/quotations/' . $a['id'] . '/edit')->withStatus(302);
+        }
     }
 });
 $app->post('/quotations/{id}/issue', function ($req, $res, $a) use ($db) {
@@ -282,9 +301,11 @@ $app->post('/quotations/{id}/status', function ($req, $res, $a) use ($db) {
     if (!in_array($to, ['accepted','cancelled'], true)) { flash('Invalid status.', 'danger'); return $res->withHeader('Location', '/quotations/' . $a['id'])->withStatus(302); }
     try {
         $db->beginTransaction();
-        $st = $db->prepare('SELECT status FROM quotations WHERE id=? FOR UPDATE'); $st->execute([$a['id']]);
-        $cur = $st->fetch()['status'] ?? null;
+        $st = $db->prepare('SELECT status, converted_invoice_id FROM quotations WHERE id=? FOR UPDATE'); $st->execute([$a['id']]);
+        $row = $st->fetch() ?: [];
+        $cur = $row['status'] ?? null;
         if ($cur !== 'issued' && !($cur === 'accepted' && $to === 'cancelled')) throw new \RuntimeException('Allowed only from issued (accept/cancel).');
+        if ($to === 'cancelled' && !empty($row['converted_invoice_id'])) throw new \RuntimeException('Cannot cancel: already converted to an invoice.');
         $db->prepare('UPDATE quotations SET status=?, cancel_reason=? WHERE id=?')->execute([$to, $p['reason'] ?? null, $a['id']]);
         Repo::audit($db, 'quote', (int)$a['id'], $to, $_SESSION['uid'] ?? null, $p['reason'] ?? null);
         $db->commit();
@@ -295,6 +316,8 @@ $app->post('/quotations/{id}/status', function ($req, $res, $a) use ($db) {
 $app->post('/quotations/{id}/duplicate', function ($req, $res, $a) use ($db) {
     if (!check_csrf((array)$req->getParsedBody())) return $res->withHeader('Location', '/quotations')->withStatus(302);
     $d = DocService::load($db, 'quote', (int)$a['id']);
+    if (!$d) { flash('Quotation not found.', 'danger'); return $res->withHeader('Location', '/quotations')->withStatus(302); }
+    try {
     $db->beginTransaction();
     $db->prepare('INSERT INTO quotations (customer_id, doc_date, expiry_date, reference, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, created_by) SELECT customer_id, CURDATE(), expiry_date, reference, subtotal, discount_type, discount_value, discount_amount, tax_total, tax_breakdown, total, dp_type, dp_value, dp_amount, dp_due_date, notes, terms, ? FROM quotations WHERE id=?')->execute([$_SESSION['uid'] ?? null, $a['id']]);
     $nid = (int)$db->lastInsertId();
@@ -309,6 +332,11 @@ $app->post('/quotations/{id}/duplicate', function ($req, $res, $a) use ($db) {
     $db->commit();
     flash('Duplicated as new draft.');
     return $res->withHeader('Location', "/quotations/$nid/edit")->withStatus(302);
+    } catch (\Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        flash($e->getMessage(), 'danger');
+        return $res->withHeader('Location', '/quotations/' . $a['id'])->withStatus(302);
+    }
 });
 $app->post('/quotations/{id}/delete', function ($req, $res, $a) use ($db) {
     if (!check_csrf((array)$req->getParsedBody())) return $res->withHeader('Location', '/quotations')->withStatus(302);
@@ -331,25 +359,52 @@ $app->get('/invoices', function ($req, $res) use ($db, $twig) {
     $where = '1=1'; $par = [];
     if (!empty($q['s'])) { $where .= ' AND (i.number LIKE ? OR c.name LIKE ? OR i.reference LIKE ?)'; $par = array_fill(0, 3, '%' . $q['s'] . '%'); }
     if (!empty($q['status'])) { $where .= ' AND i.status=?'; $par[] = $q['status']; }
+    if (!empty($q['pay'])) {
+        if ($q['pay'] === 'paid') { $where .= ' AND i.status!=? AND (i.total-COALESCE(p.paid,0))<=0'; $par[] = 'cancelled'; }
+        elseif ($q['pay'] === 'partial') $where .= ' AND COALESCE(p.paid,0)>0 AND (i.total-COALESCE(p.paid,0))>0';
+        elseif ($q['pay'] === 'unpaid') $where .= ' AND COALESCE(p.paid,0)<=0 AND (i.total-COALESCE(p.paid,0))>0';
+        elseif ($q['pay'] === 'overdue') $where .= " AND i.status='issued' AND i.due_date IS NOT NULL AND i.due_date<CURDATE() AND (i.total-COALESCE(p.paid,0))>0";
+    }
     [$rows, $total, $pages, $page] = paginate($db, "SELECT i.*, c.name customer_name, COALESCE(p.paid,0) paid FROM invoices i LEFT JOIN customers c ON c.id=i.customer_id LEFT JOIN (SELECT invoice_id, SUM(amount) paid FROM payments WHERE voided_at IS NULL GROUP BY invoice_id) p ON p.invoice_id=i.id WHERE $where ORDER BY i.id DESC", $par, (int)($q['page'] ?? 1), 15);
+    $today = date('Y-m-d');
+    foreach ($rows as &$r) {
+        $paid = (int)($r['paid'] ?? 0); $bal = max(0, (int)$r['total'] - $paid);
+        $r['balance'] = $bal;
+        $r['display'] = invoice_display_state($r['status'], (int)$r['total'], $paid, $r['due_date'] ?? null, $today);
+        $r['overdue'] = ($r['status'] === 'issued' && !empty($r['due_date']) && $r['due_date'] < $today && $bal > 0);
+    }
+    unset($r);
     return $twig->render($res, 'invoices.twig', ['rows' => $rows, 'q' => $q, 'total' => $total, 'pages' => $pages, 'page' => $page]);
 });
 $app->get('/invoices/new', function ($req, $res) use ($db, $twig) {
     return $twig->render($res, 'editor.twig', editorData($db, 'invoice', null));
 });
-$app->post('/invoices', function ($req, $res) use ($db) {
+$app->post('/invoices', function ($req, $res) use ($db, $twig) {
     $p = (array)$req->getParsedBody();
     if (!check_csrf($p)) return $res->withHeader('Location', '/invoices')->withStatus(302);
     try {
         $n = DocService::normalizePayload($p, $db);
+        if ($errs = Calculator::validateDocument(['customer_id' => $n['customer_id'], 'doc_date' => $n['doc_date'], 'sections' => $n['sections'], 'discount_type' => $n['discount_type'], 'discount_value' => $n['discount_value']])) throw new \RuntimeException(implode(' ', $errs));
         $id = DocService::saveDraft($db, 'invoice', null, $n, $_SESSION['uid'] ?? null);
         flash('Invoice draft saved.');
         return $res->withHeader('Location', "/invoices/$id")->withStatus(302);
-    } catch (\Throwable $e) { flash($e->getMessage(), 'danger'); return $res->withHeader('Location', '/invoices/new')->withStatus(302); }
+    } catch (\Throwable $e) {
+        flash($e->getMessage(), 'danger');
+        try {
+            $n = DocService::normalizePayload($p, $db);
+            $data = editorData($db, 'invoice', null);
+            $data['doc'] = repopDoc($n);
+            return $twig->render($res->withStatus(422), 'editor.twig', $data);
+        } catch (\Throwable) {
+            return $res->withHeader('Location', '/invoices/new')->withStatus(302);
+        }
+    }
 });
 $app->get('/invoices/{id}', function ($req, $res, $a) use ($db, $twig) {
     $d = DocService::load($db, 'invoice', (int)$a['id']);
     if (!$d) return $res->withStatus(404);
+    $d['display'] = invoice_display_state($d['status'], (int)$d['total'], (int)$d['paid'], $d['due_date'] ?? null);
+    $d['overdue'] = ($d['status'] === 'issued' && !empty($d['due_date']) && $d['due_date'] < date('Y-m-d') && $d['balance'] > 0);
     $logs = $db->prepare('SELECT * FROM audit_log WHERE entity_type=? AND entity_id=? ORDER BY id DESC'); $logs->execute(['invoice', $a['id']]);
     return $twig->render($res, 'invoice_detail.twig', ['d' => $d, 'logs' => $logs->fetchAll()]);
 });
@@ -359,15 +414,26 @@ $app->get('/invoices/{id}/edit', function ($req, $res, $a) use ($db, $twig) {
     if (!$editable) { flash('Only drafts and unpaid issued invoices can be edited.', 'danger'); return $res->withHeader('Location', '/invoices/' . $a['id'])->withStatus(302); }
     return $twig->render($res, 'editor.twig', editorData($db, 'invoice', $d));
 });
-$app->post('/invoices/{id}', function ($req, $res, $a) use ($db) {
+$app->post('/invoices/{id}', function ($req, $res, $a) use ($db, $twig) {
     $p = (array)$req->getParsedBody();
     if (!check_csrf($p)) return $res->withHeader('Location', '/invoices/' . $a['id'])->withStatus(302);
     try {
         $n = DocService::normalizePayload($p, $db);
+        if ($errs = Calculator::validateDocument(['customer_id' => $n['customer_id'], 'doc_date' => $n['doc_date'], 'sections' => $n['sections'], 'discount_type' => $n['discount_type'], 'discount_value' => $n['discount_value']])) throw new \RuntimeException(implode(' ', $errs));
         DocService::saveDraft($db, 'invoice', (int)$a['id'], $n, $_SESSION['uid'] ?? null);
         flash('Draft updated.');
         return $res->withHeader('Location', '/invoices/' . $a['id'])->withStatus(302);
-    } catch (\Throwable $e) { flash($e->getMessage(), 'danger'); return $res->withHeader('Location', '/invoices/' . $a['id'] . '/edit')->withStatus(302); }
+    } catch (\Throwable $e) {
+        flash($e->getMessage(), 'danger');
+        try {
+            $n = DocService::normalizePayload($p, $db);
+            $data = editorData($db, 'invoice', null);
+            $data['doc'] = repopDoc($n) + ['id' => (int)$a['id'], 'status' => 'draft'];
+            return $twig->render($res->withStatus(422), 'editor.twig', $data);
+        } catch (\Throwable) {
+            return $res->withHeader('Location', '/invoices/' . $a['id'] . '/edit')->withStatus(302);
+        }
+    }
 });
 $app->post('/invoices/{id}/issue', function ($req, $res, $a) use ($db) {
     if (!check_csrf((array)$req->getParsedBody())) return $res->withHeader('Location', '/invoices/' . $a['id'])->withStatus(302);
@@ -408,15 +474,25 @@ $app->post('/invoices/{id}/payments', function ($req, $res, $a) use ($db) {
 $app->post('/payments/{pid}/void', function ($req, $res, $a) use ($db) {
     $p = (array)$req->getParsedBody();
     if (!check_csrf($p)) return $res->withHeader('Location', '/invoices')->withStatus(302);
-    $st = $db->prepare('SELECT * FROM payments WHERE id=?'); $st->execute([$a['pid']]);
-    $pay = $st->fetch();
-    if ($pay && !$pay['voided_at']) {
-        $db->prepare('UPDATE payments SET voided_at=NOW(), void_reason=? WHERE id=?')->execute([$p['reason'] ?? 'void', $a['pid']]);
+    try {
+        $reason = trim((string)($p['reason'] ?? ''));
+        if ($reason === '') throw new \RuntimeException('A void reason is required.');
+        $db->beginTransaction();
+        $st = $db->prepare('SELECT * FROM payments WHERE id=? FOR UPDATE'); $st->execute([$a['pid']]);
+        $pay = $st->fetch();
+        if (!$pay || $pay['voided_at']) throw new \RuntimeException('Payment not found or already voided.');
+        $inv = $db->prepare('SELECT status FROM invoices WHERE id=? FOR UPDATE'); $inv->execute([$pay['invoice_id']]);
+        if (($inv->fetch()['status'] ?? null) !== 'issued') throw new \RuntimeException('Only payments on issued invoices can be voided.');
+        $db->prepare('UPDATE payments SET voided_at=NOW(), void_reason=? WHERE id=?')->execute([$reason, $a['pid']]);
         Repo::audit($db, 'invoice', (int)$pay['invoice_id'], 'payment_void', $_SESSION['uid'] ?? null, 'payment:' . $a['pid']);
+        $db->commit();
         flash('Payment voided.');
         return $res->withHeader('Location', '/invoices/' . $pay['invoice_id'])->withStatus(302);
+    } catch (\Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        flash($e->getMessage(), 'danger');
+        return $res->withHeader('Location', '/invoices')->withStatus(302);
     }
-    return $res->withHeader('Location', '/invoices')->withStatus(302);
 });
 
 // ---- JSON helpers for editor ----
@@ -459,17 +535,28 @@ $app->get('/api/grid/invoices', function ($req, $res) use ($db) {
     $where = '1=1'; $par = [];
     if (!empty($q['s'])) { $where .= ' AND (i.number LIKE ? OR c.name LIKE ? OR i.reference LIKE ?)'; $par = array_fill(0, 3, '%' . $q['s'] . '%'); }
     if (!empty($q['status'])) { $where .= ' AND i.status=?'; $par[] = $q['status']; }
+    if (!empty($q['pay'])) {
+        if ($q['pay'] === 'paid') $where .= ' AND i.status!=? AND (i.total-COALESCE(p.paid,0))<=0';
+        elseif ($q['pay'] === 'partial') $where .= ' AND COALESCE(p.paid,0)>0 AND (i.total-COALESCE(p.paid,0))>0';
+        elseif ($q['pay'] === 'unpaid') $where .= ' AND COALESCE(p.paid,0)<=0 AND (i.total-COALESCE(p.paid,0))>0';
+        elseif ($q['pay'] === 'overdue') $where .= " AND i.status='issued' AND i.due_date IS NOT NULL AND i.due_date<CURDATE() AND (i.total-COALESCE(p.paid,0))>0";
+        if ($q['pay'] === 'paid') $par[] = 'cancelled';
+    }
     $st = $db->prepare("SELECT i.id, i.number, i.status, i.doc_date, i.due_date, i.total, c.name customer_name, COALESCE(p.paid,0) paid FROM invoices i LEFT JOIN customers c ON c.id=i.customer_id LEFT JOIN (SELECT invoice_id, SUM(amount) paid FROM payments WHERE voided_at IS NULL GROUP BY invoice_id) p ON p.invoice_id=i.id WHERE $where ORDER BY i.id DESC");
     $st->execute($par);
     $today = date('Y-m-d');
     $rows = array_map(function ($r) use ($today) {
         $bal = max(0, (int)$r['total'] - (int)$r['paid']);
+        $paid = (int)$r['paid'];
+        $payst = $bal === 0 ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid');
         return ['id' => (int)$r['id'], 'number' => $r['number'] ?? '(draft)', 'customer' => $r['customer_name'] ?? '-',
             'date_iso' => $r['doc_date'], 'date' => Format::escDate($r['doc_date']),
             'total_num' => (int)$r['total'], 'total' => Format::idr((int)$r['total']),
-            'paid_num' => (int)$r['paid'], 'paid' => Format::idr((int)$r['paid']),
+            'paid_num' => $paid, 'paid' => Format::idr($paid),
             'bal_num' => $bal, 'balance' => Format::idr($bal),
-            'status' => $r['status'], 'overdue' => ($r['status'] === 'issued' && $r['due_date'] && $r['due_date'] < $today && $bal > 0)];
+            'status' => $r['status'], 'payst' => $payst,
+            'display' => invoice_display_state($r['status'], (int)$r['total'], $paid, $r['due_date'] ?? null, $today),
+            'overdue' => ($r['status'] === 'issued' && $r['due_date'] && $r['due_date'] < $today && $bal > 0)];
     }, $st->fetchAll());
     return gridJson($res, $rows);
 });
@@ -586,6 +673,47 @@ $app->get('/invoices/{id}/pdf', function ($req, $res, $a) use ($db, $twig) {
     return pdfResponse($res, $pdf, ($d['number'] ?? 'DRAFT') . '.pdf', $dl);
 });
 
+/**
+ * Rebuild an editor-compatible doc array from a normalized payload so a
+ * failed save can re-render the form with the user's typed values intact
+ * (instead of redirecting to a blank form and looking like data loss).
+ */
+function repopDoc(array $n): array {
+    $sections = [];
+    foreach (array_values($n['sections'] ?? []) as $sec) {
+        $lines = [];
+        foreach (array_values($sec['lines'] ?? []) as $l) {
+            $lines[] = [
+                'description' => $l['description'] ?? '', 'quantity' => $l['quantity'] ?? 1,
+                'unit_label' => $l['unit_label'] ?? 'pcs', 'unit_price' => $l['unit_price'] ?? 0,
+                'mult_enabled' => $l['mult_enabled'] ?? 0, 'mult_label' => $l['mult_label'] ?? 'days',
+                'mult_value' => $l['mult_value'] ?? 1, 'tax_rate_id' => $l['tax_rate_id'] ?? '',
+                'tax_rate' => $l['tax_rate'] ?? 0, 'waived' => $l['waived'] ?? 0,
+                'price_mode' => $l['price_mode'] ?? 'normal', 'product_id' => $l['product_id'] ?? null,
+                'product_name' => null,
+            ];
+        }
+        $sections[] = ['title' => $sec['title'] ?? '', 'description' => $sec['description'] ?? '', 'lines' => $lines];
+    }
+    return [
+        'customer_id' => $n['customer_id'] ?? null, 'doc_date' => $n['doc_date'] ?? date('Y-m-d'),
+        'expiry_date' => $n['expiry_date'] ?? null, 'due_date' => $n['due_date'] ?? null,
+        'reference' => $n['reference'] ?? '', 'discount_type' => $n['discount_type'] ?? 'none',
+        'discount_value' => $n['discount_value'] ?? 0, 'dp_type' => $n['dp_type'] ?? 'none',
+        'dp_value' => $n['dp_value'] ?? 0, 'dp_due_date' => $n['dp_due_date'] ?? null,
+        'notes' => $n['notes'] ?? '', 'terms' => $n['terms'] ?? '',
+        'show_signature' => $n['show_signature'] ?? 0, 'sections' => $sections, 'banks' => [],
+    ];
+}
+
+/**
+ * Single derived display state for invoices.
+ * Precedence: cancelled > draft > paid > partial > overdue > issued (unpaid).
+ * Rp0-total fully-settled docs report 'paid' so they never read as "unpaid".
+ */
+function invoice_display_state(string $status, int $total, int $paid, ?string $dueDate, ?string $today = null): string {
+    return \App\Services\DocService::displayState($status, $total, $paid, $dueDate, $today);
+}
 function editorData(PDO $db, string $kind, ?array $doc): array {
     $settings = Repo::settings($db);
     $customers = $db->query('SELECT id, name FROM customers WHERE archived=0 ORDER BY name LIMIT 200')->fetchAll();

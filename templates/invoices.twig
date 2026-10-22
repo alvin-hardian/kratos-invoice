@@ -1,10 +1,10 @@
 ﻿{% extends 'layout.twig' %}
 {% block content %}
 <div class="mb-4 flex items-center gap-3"><h2 class="font-display text-2xl">Invoices</h2><a class="btn btn-primary btn-sm" href="/invoices/new">New</a></div>
-<form class="mb-3 flex flex-wrap gap-2" method="get"><input class="field max-w-xs" name="s" value="{{ q.s ?? '' }}" placeholder="Number / customer / ref"><select class="field max-w-[12rem]" name="status"><option value="">All</option>{% for st in ['draft','issued','cancelled'] %}<option {{ q.status==st?'selected' }}>{{ st }}</option>{% endfor %}</select><button class="btn btn-default">Filter</button></form>
-<div class="overflow-x-auto"><table id="igrid" class="tbl w-full text-sm" data-url="/api/grid/invoices?s={{ (q.s ?? '')|url_encode }}&status={{ (q.status ?? '')|url_encode }}"></table></div>
-<table class="tbl w-full text-sm" id="igrid-fallback"><thead><tr><th class="px-3 py-2">Number</th><th class="px-3 py-2">Customer</th><th class="px-3 py-2">Date</th><th class="px-3 py-2 text-right">Total</th><th class="px-3 py-2 text-right">Paid</th><th class="px-3 py-2">Status</th><th class="px-3 py-2"></th></tr></thead><tbody>
-{% for r in rows %}<tr class="border-t border-slate-100"><td class="px-3 py-2"><a class="text-brand-600 hover:underline" href="/invoices/{{ r.id }}">{{ r.number ?? '(draft)' }}</a></td><td class="px-3 py-2">{{ r.customer_name }}</td><td class="px-3 py-2">{{ r.doc_date|d }}</td><td class="px-3 py-2 text-right">{{ r.total|idr }}</td><td class="px-3 py-2 text-right">{{ r.paid|idr }}</td><td class="px-3 py-2"><span class="inline-block rounded px-2 py-0.5 text-xs font-medium text-white badge-{{ r.status }}">{{ r.status }}</span></td><td class="px-3 py-2"><a class="btn btn-default btn-sm" href="/invoices/{{ r.id }}">Open</a></td></tr>{% else %}<tr><td colspan="7" class="px-3 py-4 text-center text-slate-400">No invoices.</td></tr>{% endfor %}
+<form class="mb-3 flex flex-wrap gap-2" method="get"><input class="field max-w-xs" name="s" value="{{ q.s ?? '' }}" placeholder="Number / customer / ref"><select class="field max-w-[12rem]" name="status"><option value="">All statuses</option>{% for st in ['draft','issued','cancelled'] %}<option {{ q.status==st?'selected' }}>{{ st }}</option>{% endfor %}</select><select class="field max-w-[12rem]" name="pay"><option value="">All payments</option>{% for st in ['paid','partial','unpaid','overdue'] %}<option value="{{ st }}" {{ q.pay==st?'selected' }}>{{ st }}</option>{% endfor %}</select><button class="btn btn-default">Filter</button></form>
+<div class="overflow-x-auto"><table id="igrid" class="tbl w-full text-sm" data-url="/api/grid/invoices?s={{ (q.s ?? '')|url_encode }}&status={{ (q.status ?? '')|url_encode }}&pay={{ (q.pay ?? '')|url_encode }}"></table></div>
+<table class="tbl w-full text-sm" id="igrid-fallback"><thead><tr><th class="px-3 py-2">Number</th><th class="px-3 py-2">Customer</th><th class="px-3 py-2">Date</th><th class="px-3 py-2 text-right">Total</th><th class="px-3 py-2 text-right">Paid</th><th class="px-3 py-2 text-right">Balance</th><th class="px-3 py-2">Status</th><th class="px-3 py-2"></th></tr></thead><tbody>
+{% for r in rows %}<tr class="border-t border-slate-100{% if r.overdue %} overdue-row{% endif %}"><td class="px-3 py-2 sticky-col"><a class="text-brand-600 hover:underline" href="/invoices/{{ r.id }}">{{ r.number ?? '(draft)' }}</a></td><td class="px-3 py-2">{{ r.customer_name }}</td><td class="px-3 py-2">{{ r.doc_date|d }}</td><td class="px-3 py-2 text-right">{{ r.total|idr }}</td><td class="px-3 py-2 text-right">{{ r.paid|idr }}</td><td class="px-3 py-2 text-right">{{ r.balance|idr }}</td><td class="px-3 py-2"><span class="inline-block rounded px-2 py-0.5 text-xs font-medium text-white badge-{{ r.display }}">{{ r.display }}</span>{% if r.overdue %} <span class="inline-block rounded bg-red-600 px-2 py-0.5 text-xs font-medium text-white">overdue</span>{% endif %}</td><td class="px-3 py-2"><a class="btn btn-default btn-sm" href="/invoices/{{ r.id }}">Open</a></td></tr>{% else %}<tr><td colspan="8" class="px-3 py-4 text-center text-slate-400">No invoices.</td></tr>{% endfor %}
 </tbody></table>
 {% endblock %}
 {% block scripts %}
@@ -26,9 +26,11 @@ mountDataTable('igrid', [
   { data: 'status', title: 'Status', render: function(d, t, row) {
     if (t !== 'display' && t !== 'filter') return d;
     var extra = row.overdue ? ' ' + badgeHtml('overdue', 'badge-overdue') : '';
-    return statusHtml(d) + extra;
+    return statusHtml(row.display || d) + extra;
   }},
   { data: 'id', title: '', orderable: false, searchable: false, render: function(d) { return '<a class="btn btn-default btn-sm" href="/invoices/' + d + '">Open</a>'; } }
-]);
+], {
+  createdRow: function(row, data) { if (data && data.overdue) row.classList.add('overdue-row'); }
+});
 </script>
 {% endblock %}

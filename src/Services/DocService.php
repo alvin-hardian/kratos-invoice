@@ -23,6 +23,23 @@ final class DocService
         return $cache[$key];
     }
 
+    /**
+     * Single derived display state for invoices.
+     * Precedence: cancelled > draft > paid > partial > overdue > issued (unpaid).
+     * Rp0-total settled docs report 'paid' so they never read as "unpaid".
+     */
+    public static function displayState(string $status, int $total, int $paid, ?string $dueDate, ?string $today = null): string
+    {
+        if ($status === 'cancelled') return 'cancelled';
+        if ($status === 'draft') return 'draft';
+        $bal = max(0, $total - $paid);
+        if ($bal === 0) return 'paid';
+        if ($paid > 0) return 'partial';
+        $today ??= date('Y-m-d');
+        if ($dueDate && $dueDate < $today) return 'overdue';
+        return 'issued';
+    }
+
     /** Whether the invoice has any non-voided payments recorded. */
     public static function hasActivePayments(PDO $db, int $invoiceId): bool
     {

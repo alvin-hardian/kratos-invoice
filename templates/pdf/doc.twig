@@ -12,6 +12,9 @@ h1, h2, h3 { font-family: 'Inter', sans-serif; font-weight: bold; margin: 0 0 6p
 .doc-number { font-size: 15px; font-weight: bold; color: #0f172a; }
 .doc-meta { font-size: 10px; color: #475569; }
 .draft { color: #b91c1c; border: 2px solid #b91c1c; display: inline-block; padding: 2px 10px; font-size: 14px; font-weight: bold; margin: 6px 0; }
+.stamp-paid { color: #047857; border-color: #047857; }
+.stamp-overdue { color: #b91c1c; border-color: #b91c1c; }
+.stamp-cancelled { color: #475569; border-color: #475569; }
 table { width: 100%; border-collapse: collapse; }
 .panel td { border: 1px solid #e2d4f7; background: #faf7fe; padding: 8px 10px; vertical-align: top; }
 .panel .lbl { font-size: 9px; font-weight: bold; color: #641bb0; letter-spacing: 1px; margin-bottom: 3px; }
@@ -52,6 +55,9 @@ tr { page-break-inside: avoid; }
 <div class="doc-number">{{ d.number ? '#' ~ d.number : '(DRAFT — no permanent number)' }}</div>
 <div class="doc-meta">Date: {{ d.doc_date }}<br>{% if kind=='quote' %}Valid until: {{ d.expiry_date }}{% else %}Due: {{ d.due_date }}{% endif %}<br>Ref: {{ d.reference ?? '-' }}</div>
 {% if not d.number %}<div class="draft">DRAFT</div>{% endif %}
+{% if kind == 'invoice' and d.status == 'cancelled' %}<div class="draft stamp-cancelled">CANCELLED</div>{% endif %}
+{% if kind == 'invoice' and d.status == 'issued' and d.balance is defined and d.balance == 0 %}<div class="draft stamp-paid">LUNAS / PAID</div>{% endif %}
+{% if kind == 'invoice' and d.status == 'issued' and d.balance is defined and d.balance > 0 and d.due_date and d.due_date < 'now'|date('Y-m-d') %}<div class="draft stamp-overdue">OVERDUE</div>{% endif %}
 </td>
 </tr></table>
 <table class="panel" style="margin-bottom:10px"><tr>

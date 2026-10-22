@@ -3,7 +3,7 @@
 <h2 class="font-display mb-4 text-2xl">Dashboard</h2>
 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 <div class="card p-4"><div class="text-sm text-slate-500">Outstanding</div><div class="font-display text-2xl">{{ out|idr }}</div><a class="text-sm text-brand-600 hover:underline" href="/invoices">View invoices</a></div>
-<div class="card p-4"><div class="text-sm text-slate-500">Overdue</div><div class="font-display text-2xl text-red-600">{{ over|idr }}</div><a class="text-sm text-brand-600 hover:underline" href="/invoices">Overdue list</a></div>
+<div class="card p-4"><div class="text-sm text-slate-500">Overdue</div><div class="font-display text-2xl text-red-600">{{ over|idr }}</div><a class="text-sm text-brand-600 hover:underline" href="/invoices?pay=overdue">Overdue list</a></div>
 <div class="card p-4"><div class="text-sm text-slate-500">Paid this month</div><div class="font-display text-2xl text-emerald-600">{{ month|idr }}</div><a class="text-sm text-brand-600 hover:underline" href="/summary">Summary</a></div>
 <div class="card p-4"><div class="text-sm text-slate-500">Awaiting decision</div><div class="font-display text-2xl">{{ await }}</div><a class="text-sm text-brand-600 hover:underline" href="/quotations?status=issued">View quotations</a></div>
 <div class="card p-4"><div class="text-sm text-slate-500">DP still due</div><div class="font-display text-2xl">{{ dpdue|idr }}</div><a class="text-sm text-brand-600 hover:underline" href="/summary">Summary</a></div>

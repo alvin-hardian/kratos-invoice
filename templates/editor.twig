@@ -8,8 +8,9 @@
 <div class="md:col-span-2"><label class="text-sm font-medium">{{ kind=='quote' ? 'Expiry' : 'Due' }}<input class="field mt-1" type="date" name="{{ kind=='quote' ? 'expiry_date' : 'due_date' }}" value="{{ kind=='quote' ? (doc.expiry_date ?? expDef) : (doc.due_date ?? dueDef) }}"></label></div>
 <div class="md:col-span-4"><label class="text-sm font-medium">Reference / project<input class="field mt-1" name="reference" value="{{ doc.reference ?? '' }}" placeholder="Optional"></label></div>
 </div>
-<div id="sections" class="mt-4"></div>
+<div id="sections" class="mt-4" aria-live="polite"><div class="rounded-xl border-2 border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">Loading editor… if items do not appear, check your connection and reload. <noscript>JavaScript is required for the quotation/invoice editor.</noscript></div></div>
 <button type="button" class="btn btn-default mt-2" id="add-section">+ Add section</button>
+<div class="mt-1 text-xs text-slate-500" id="editor-hint">Tip: per item, type to search reusable products — press Enter to save a new item. Empty descriptions block saving; fix them inline instead of retyping everything.</div>
 <hr class="my-4 border-slate-200">
 <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
 <div><label class="text-sm font-medium">Discount<select class="field mt-1" name="discount_type" id="f-dt"><option value="none">None</option><option value="percent" {{ doc and doc.discount_type=='percent'?'selected' }}>Percent %</option><option value="fixed" {{ doc and doc.discount_type=='fixed'?'selected' }}>Fixed IDR</option></select></label><input class="field mt-2" name="discount_value" id="f-dv" value="{{ doc.discount_value ?? 0 }}"></div>
